@@ -60,6 +60,25 @@
   - Document statuses: draft, finalized, or none
   - Account details include name, value, contact, stage
 
+### Milestone 4: Prospect Detail View (COMPLETED)
+- **Date**: July 7, 2025
+- **Status**: ✅ Complete
+- **Components Created**:
+  - `ProspectDetailPage` - Shows detailed account information
+- **Features Implemented**:
+  - Fetches account details from GET /accounts/:id
+  - Displays account summary with name, stage, value, contact
+  - Shows existing documents with status badges
+  - "Generate Suggested Document" button with loading state
+  - Calls POST /documents/generate API
+  - Back navigation to accounts list
+  - Placeholder for file upload (Milestone 5)
+- **UI Elements**:
+  - Clean card-based layout
+  - Color-coded stage and status badges
+  - Loading and error states
+  - Empty state for no documents
+
 ## Tech Stack Reference
 - **Frontend**: React + Vite
 - **Styling**: TailwindCSS
@@ -75,8 +94,9 @@
 - `POST /api/documents/generate` - Document generation endpoint
 
 ## Next Steps
-- Milestone 4: Prospect Detail View
-  - Create ProspectDetailPage component
-  - Add route for /accounts/:id
-  - Display account summary and documents
-  - Add "Generate Suggested Document" button
+- Milestone 5: File Upload Interface
+  - Create FileUploadDropzone component
+  - Implement drag-and-drop functionality
+  - Accept PDF, DOCX, TXT files only
+  - Show file preview on drop
+  - POST to /accounts/:id/upload
