@@ -7,7 +7,7 @@ import RequireAuth from './components/RequireAuth'
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-gradient-to-b from-volcanic-navy to-volcanic-black">
+      <div className="min-h-screen bg-gradient-to-b from-[#0A0F1E] to-[#05070C]">
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />

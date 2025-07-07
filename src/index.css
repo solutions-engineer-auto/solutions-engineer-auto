@@ -5,7 +5,7 @@
 /* Custom global styles */
 @layer base {
   body {
-    @apply antialiased bg-gradient-to-b from-volcanic-navy to-volcanic-black min-h-screen text-white/90;
+    @apply antialiased bg-gradient-to-b from-[#0A0F1E] to-[#05070C] min-h-screen text-white/90;
   }
 
   /* Custom scrollbar for volcanic theme */
@@ -15,16 +15,16 @@
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-volcanic-black/50;
+    @apply bg-black/50;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-volcanic-ash rounded-full;
+    @apply bg-gray-600 rounded-full;
     border: 1px solid rgba(184, 212, 227, 0.1);
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-volcanic-ash-light;
+    @apply bg-gray-500;
   }
 }
 
@@ -32,12 +32,12 @@
   /* Glassmorphic panel base */
   .glass-panel {
     @apply bg-white/[0.05] backdrop-blur-md rounded-2xl;
-    @apply border border-white/[0.15] shadow-glow;
+    @apply border border-white/[0.15] shadow-lg shadow-blue-500/10;
     @apply backdrop-saturate-150;
   }
 
   .glass-panel-hover {
-    @apply hover:bg-white/[0.08] hover:shadow-glow-lg;
+    @apply hover:bg-white/[0.08] hover:shadow-xl hover:shadow-blue-500/20;
     @apply hover:border-white/[0.2];
     @apply transition-all duration-300 ease-out;
   }
@@ -49,15 +49,15 @@
     @apply border border-white/[0.15] shadow-sm;
     @apply text-white/90 hover:text-white;
     @apply transition-all duration-300 ease-out;
-    @apply hover:bg-white/[0.12] hover:border-volcanic-lava-orange/50;
-    @apply hover:shadow-lava-glow active:scale-[0.98];
+    @apply hover:bg-white/[0.12] hover:border-orange-500/50;
+    @apply hover:shadow-orange-500/40 active:scale-[0.98];
   }
 
   .btn-volcanic-primary {
-    @apply bg-gradient-to-r from-volcanic-lava-red to-volcanic-lava-orange;
-    @apply border border-volcanic-lava-orange/30;
+    @apply bg-gradient-to-r from-[#CF1020] to-[#FF4500];
+    @apply border border-orange-500/30;
     @apply text-white font-medium;
-    @apply hover:shadow-lava-glow-lg hover:scale-[1.02];
+    @apply hover:shadow-lg hover:shadow-orange-500/50 hover:scale-[1.02];
     @apply transition-all duration-300;
   }
 
@@ -67,8 +67,8 @@
     @apply bg-white/[0.05] backdrop-blur-md;
     @apply border border-white/[0.15] text-white;
     @apply placeholder-white/40;
-    @apply focus:outline-none focus:border-volcanic-lava-orange/50;
-    @apply focus:shadow-lava-glow transition-all duration-300;
+    @apply focus:outline-none focus:border-orange-500/50;
+    @apply focus:shadow-lg focus:shadow-orange-500/30 transition-all duration-300;
   }
 
   /* Badge styles */
@@ -80,7 +80,7 @@
 
   /* Typography */
   .text-gradient-lava {
-    @apply bg-gradient-to-r from-volcanic-lava-red to-volcanic-lava-orange;
+    @apply bg-gradient-to-r from-[#CF1020] to-[#FF4500];
     @apply bg-clip-text text-transparent;
   }
 }

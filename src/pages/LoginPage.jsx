@@ -21,7 +21,7 @@ function LoginPage() {
       </div>
       
       {/* Login Card */}
-      <div className="relative glass-panel glass-panel-hover p-10 w-full max-w-md shadow-glow-lg">
+      <div className="relative glass-panel glass-panel-hover p-10 w-full max-w-md shadow-xl shadow-blue-500/20">
         {/* Logo/Title Section */}
         <div className="text-center mb-10">
           <div className="mb-6">
