@@ -79,6 +79,33 @@
   - Loading and error states
   - Empty state for no documents
 
+### UI Transformation: Volcanic Beach Theme (COMPLETED)
+- **Date**: July 7, 2025
+- **Status**: ✅ Complete
+- **Design System**:
+  - **Theme**: Dark-mode glassmorphic inspired by volcanic beaches
+  - **Background**: Deep navy (#0A0F1E) to near-black (#05070C) gradient
+  - **Panels**: Frosted glass with 25% opacity, 12-18px blur, white borders at 15% opacity
+  - **Colors**: 
+    - Ash-gray/black for base layers
+    - Foamy blue/white for overlays
+    - Lava orange/red (#FF4500, #CF1020) for CTAs and active states
+  - **Typography**: Light weight sans-serif, elegant and minimal
+  - **Effects**: Soft glows, lava-inspired hover states, smooth transitions
+- **Components Updated**:
+  - Custom Tailwind config with volcanic color palette
+  - Glassmorphic utility classes in index.css
+  - All pages and components transformed
+  - Button styles with lava glow effects
+  - Badge gradients for visual hierarchy
+  - Animated background elements
+- **Key Features**:
+  - `.glass-panel` utility for consistent glassmorphism
+  - `.btn-volcanic` and `.btn-volcanic-primary` for buttons
+  - Gradient text effects with `.text-gradient-lava`
+  - Custom scrollbar styling
+  - Responsive and accessible design
+
 ## Tech Stack Reference
 - **Frontend**: React + Vite
 - **Styling**: TailwindCSS
