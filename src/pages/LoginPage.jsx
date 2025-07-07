@@ -13,31 +13,60 @@ function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+    <div className="min-h-screen flex items-center justify-center p-4">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-volcanic-lava-orange/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-volcanic-foam/5 rounded-full blur-3xl animate-pulse delay-1000"></div>
+      </div>
+      
+      {/* Login Card */}
+      <div className="relative glass-panel glass-panel-hover p-10 w-full max-w-md shadow-glow-lg">
+        {/* Logo/Title Section */}
+        <div className="text-center mb-10">
+          <div className="mb-6">
+            <div className="w-20 h-20 mx-auto bg-gradient-to-br from-volcanic-lava-red to-volcanic-lava-orange rounded-2xl flex items-center justify-center shadow-lava-glow">
+              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            </div>
+          </div>
+          
+          <h1 className="text-3xl font-light text-volcanic-foam-light mb-2 tracking-wide">
             Solution Engineer Tool
           </h1>
-          <p className="text-gray-600">
+          <p className="text-volcanic-foam/70 font-light">
             Automate your document generation workflow
           </p>
         </div>
         
-        <div className="space-y-4">
+        {/* Login Button */}
+        <div className="space-y-6">
           <button
             onClick={handleDemoLogin}
-            className="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 
-                     transition duration-200 font-medium text-lg shadow-sm
-                     focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="w-full btn-volcanic-primary text-lg font-medium flex items-center justify-center space-x-3 group"
           >
-            Login as Demo Engineer
+            <svg className="w-5 h-5 group-hover:animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                    d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+            </svg>
+            <span>Login as Demo Engineer</span>
           </button>
           
-          <p className="text-sm text-gray-500 text-center mt-4">
-            This is a demo authentication. In production, this would use OAuth.
-          </p>
+          <div className="text-center">
+            <p className="text-sm text-volcanic-foam/50 font-light">
+              This is a demo authentication
+            </p>
+            <p className="text-xs text-volcanic-foam/40 mt-1">
+              Production will use OAuth integration
+            </p>
+          </div>
         </div>
+        
+        {/* Decorative Elements */}
+        <div className="absolute -top-px left-10 right-10 h-px bg-gradient-to-r from-transparent via-volcanic-foam/20 to-transparent"></div>
+        <div className="absolute -bottom-px left-10 right-10 h-px bg-gradient-to-r from-transparent via-volcanic-lava-orange/20 to-transparent"></div>
       </div>
     </div>
   )

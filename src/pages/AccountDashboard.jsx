@@ -41,59 +41,68 @@ function AccountDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-          <p className="mt-2 text-gray-600">Loading accounts...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-volcanic-foam/20 border-t-volcanic-lava-orange"></div>
+          <p className="mt-4 text-volcanic-foam/70 font-light">Loading accounts...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen relative">
+      {/* Background decoration */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 right-20 w-64 h-64 bg-volcanic-lava-orange/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 left-20 w-96 h-96 bg-volcanic-foam/5 rounded-full blur-3xl"></div>
+      </div>
+
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="bg-white shadow-sm rounded-lg mb-6">
-          <div className="px-6 py-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  Account Dashboard
-                </h1>
-                <p className="mt-1 text-sm text-gray-600">
-                  Welcome back, {userId}
-                </p>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white 
-                         border border-gray-300 rounded-md hover:bg-gray-50
-                         focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                Logout
-              </button>
+        <div className="glass-panel mb-8 p-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-light text-volcanic-foam-light tracking-wide mb-1">
+                Account Dashboard
+              </h1>
+              <p className="text-sm text-volcanic-foam/60 font-light">
+                Welcome back, <span className="text-volcanic-lava-orange">{userId}</span>
+              </p>
             </div>
+            <button
+              onClick={handleLogout}
+              className="btn-volcanic flex items-center space-x-2 group"
+            >
+              <svg className="w-5 h-5 group-hover:text-volcanic-lava-orange transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span>Logout</span>
+            </button>
           </div>
         </div>
 
         {/* Filter Section */}
-        <div className="bg-white shadow-sm rounded-lg mb-6 px-6 py-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div className="glass-panel mb-8 p-6">
+          <label className="block text-sm font-medium text-volcanic-foam/80 mb-3">
             Filter by Stage
           </label>
-          <select
-            value={selectedStage}
-            onChange={(e) => setSelectedStage(e.target.value)}
-            className="block w-full md:w-64 px-3 py-2 border border-gray-300 rounded-md shadow-sm
-                     focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          >
+          <div className="flex flex-wrap gap-2">
             {stages.map(stage => (
-              <option key={stage} value={stage}>
+              <button
+                key={stage}
+                onClick={() => setSelectedStage(stage)}
+                className={`px-4 py-2 rounded-xl font-light transition-all duration-300 ${
+                  selectedStage === stage
+                    ? 'bg-gradient-to-r from-volcanic-lava-red/80 to-volcanic-lava-orange/80 text-white shadow-lava-glow'
+                    : 'glass-panel glass-panel-hover text-volcanic-foam/80'
+                }`}
+              >
                 {stage === 'all' ? 'All Stages' : stage}
-              </option>
+              </button>
             ))}
-          </select>
+          </div>
         </div>
 
         {/* Accounts Grid */}
@@ -108,8 +117,14 @@ function AccountDashboard() {
         </div>
 
         {filteredAccounts.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No accounts found for the selected stage.</p>
+          <div className="text-center py-16">
+            <div className="glass-panel inline-block p-8">
+              <svg className="w-16 h-16 mx-auto text-volcanic-foam/30 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <p className="text-volcanic-foam/50 font-light">No accounts found for the selected stage.</p>
+            </div>
           </div>
         )}
       </div>

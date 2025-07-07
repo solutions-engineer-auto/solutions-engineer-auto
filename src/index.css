@@ -5,6 +5,89 @@
 /* Custom global styles */
 @layer base {
   body {
-    @apply antialiased;
+    @apply antialiased bg-volcanic-gradient min-h-screen text-volcanic-foam;
+  }
+
+  /* Custom scrollbar for volcanic theme */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-volcanic-black/50;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-volcanic-ash rounded-full;
+    border: 1px solid rgba(184, 212, 227, 0.1);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-volcanic-ash-light;
+  }
+}
+
+@layer components {
+  /* Glassmorphic panel base */
+  .glass-panel {
+    @apply bg-volcanic-ash/25 backdrop-blur-glass rounded-2xl;
+    @apply border border-white/15 shadow-glow;
+  }
+
+  .glass-panel-hover {
+    @apply hover:bg-volcanic-ash/30 hover:shadow-glow-lg;
+    @apply transition-all duration-300 ease-out;
+  }
+
+  /* Volcanic button base */
+  .btn-volcanic {
+    @apply px-6 py-3 rounded-xl font-light tracking-wide;
+    @apply bg-volcanic-ash/30 backdrop-blur-glass;
+    @apply border border-white/10 shadow-glow-sm;
+    @apply text-volcanic-foam hover:text-volcanic-foam-light;
+    @apply transition-all duration-300 ease-out;
+    @apply hover:bg-volcanic-ash/40 hover:border-volcanic-lava-orange/50;
+    @apply hover:shadow-lava-glow active:scale-95;
+  }
+
+  .btn-volcanic-primary {
+    @apply bg-gradient-to-r from-volcanic-lava-red/80 to-volcanic-lava-orange/80;
+    @apply backdrop-blur-glass border-volcanic-lava-orange/30;
+    @apply text-white hover:from-volcanic-lava-red hover:to-volcanic-lava-orange;
+    @apply hover:shadow-lava-glow-lg;
+  }
+
+  /* Input styles */
+  .input-volcanic {
+    @apply w-full px-4 py-3 rounded-xl;
+    @apply bg-volcanic-ash/20 backdrop-blur-glass;
+    @apply border border-white/10 text-volcanic-foam;
+    @apply placeholder-volcanic-foam/40;
+    @apply focus:outline-none focus:border-volcanic-lava-orange/50;
+    @apply focus:shadow-lava-glow transition-all duration-300;
+  }
+
+  /* Badge styles */
+  .badge-volcanic {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
+    @apply bg-volcanic-ash/30 backdrop-blur-glass border border-white/10;
+  }
+
+  /* Typography */
+  .text-gradient-lava {
+    @apply bg-gradient-to-r from-volcanic-lava-red to-volcanic-lava-orange;
+    @apply bg-clip-text text-transparent;
+  }
+}
+
+@layer utilities {
+  /* Glow effects */
+  .text-glow {
+    text-shadow: 0 0 10px rgba(184, 212, 227, 0.5);
+  }
+
+  .text-lava-glow {
+    text-shadow: 0 0 20px rgba(255, 69, 0, 0.6);
   }
 }
