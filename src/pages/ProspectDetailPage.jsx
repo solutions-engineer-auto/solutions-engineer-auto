@@ -64,8 +64,8 @@ function ProspectDetailPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-volcanic-foam/20 border-t-volcanic-lava-orange"></div>
-          <p className="mt-4 text-volcanic-foam/70 font-light">Loading account details...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-white/20 border-t-orange-500"></div>
+          <p className="mt-4 text-white/70 font-light">Loading account details...</p>
         </div>
       </div>
     )
@@ -75,7 +75,7 @@ function ProspectDetailPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="glass-panel p-8 text-center">
-          <p className="text-volcanic-foam/70 mb-4">Account not found</p>
+          <p className="text-white/70 mb-4">Account not found</p>
           <button
             onClick={() => navigate('/accounts')}
             className="btn-volcanic"
@@ -98,7 +98,7 @@ function ProspectDetailPage() {
       case 'Post-Sale':
         return 'from-emerald-500/80 to-green-500/80 border-emerald-400/30'
       default:
-        return 'from-volcanic-ash/50 to-volcanic-ash-light/50 border-volcanic-ash/30'
+        return 'from-gray-600/50 to-gray-500/50 border-gray-400/30'
     }
   }
 
@@ -109,7 +109,7 @@ function ProspectDetailPage() {
       case 'draft':
         return 'from-amber-500/80 to-yellow-500/80 border-amber-400/30'
       default:
-        return 'from-volcanic-ash/50 to-volcanic-ash-light/50 border-volcanic-ash/30'
+        return 'from-gray-600/50 to-gray-500/50 border-gray-400/30'
     }
   }
 
@@ -117,15 +117,15 @@ function ProspectDetailPage() {
     <div className="min-h-screen relative">
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-40 right-40 w-96 h-96 bg-volcanic-lava-orange/5 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-40 left-40 w-64 h-64 bg-volcanic-foam/5 rounded-full blur-3xl"></div>
+        <div className="absolute top-40 right-40 w-96 h-96 bg-orange-500/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-40 left-40 w-64 h-64 bg-blue-400/5 rounded-full blur-3xl"></div>
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Navigation */}
         <button
           onClick={() => navigate('/accounts')}
-          className="mb-6 flex items-center text-volcanic-foam/70 hover:text-volcanic-foam transition-colors group"
+          className="mb-6 flex items-center text-white/70 hover:text-white transition-colors group"
         >
           <svg className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
@@ -137,32 +137,32 @@ function ProspectDetailPage() {
         {/* Account Summary Card */}
         <div className="glass-panel mb-8 p-8 relative overflow-hidden">
           {/* Subtle gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-volcanic-lava-orange/5 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent"></div>
           
           <div className="relative">
             <div className="flex justify-between items-start">
               <div className="flex-1">
-                <h1 className="text-3xl font-light text-volcanic-foam-light mb-3">
+                <h1 className="text-3xl font-light text-white mb-3">
                   {account.name}
                 </h1>
-                <p className="text-volcanic-foam/70 mb-6 max-w-2xl">{account.description}</p>
+                <p className="text-white/70 mb-6 max-w-2xl">{account.description}</p>
                 
                 <div className="flex flex-wrap items-center gap-6">
                   <div>
-                    <span className="text-sm text-volcanic-foam/60 font-light">Stage</span>
+                    <span className="text-sm text-white/60 font-light">Stage</span>
                     <span className={`ml-3 inline-flex items-center px-4 py-1.5 rounded-full text-sm font-medium 
                                    bg-gradient-to-r ${getStageBadgeColor(account.stage)} 
-                                   backdrop-blur-glass border text-white shadow-sm`}>
+                                   backdrop-blur-sm border text-white shadow-sm`}>
                       {account.stage}
                     </span>
                   </div>
                   <div>
-                    <span className="text-sm text-volcanic-foam/60 font-light">Value</span>
-                    <span className="ml-3 text-2xl font-bold text-gradient-lava">{account.value}</span>
+                    <span className="text-sm text-white/60 font-light">Value</span>
+                    <span className="ml-3 text-2xl font-bold bg-gradient-to-r from-orange-500 to-orange-400 bg-clip-text text-transparent">{account.value}</span>
                   </div>
                   <div>
-                    <span className="text-sm text-volcanic-foam/60 font-light">Contact</span>
-                    <span className="ml-3 text-volcanic-foam">{account.contact}</span>
+                    <span className="text-sm text-white/60 font-light">Contact</span>
+                    <span className="ml-3 text-white">{account.contact}</span>
                   </div>
                 </div>
               </div>
@@ -172,24 +172,24 @@ function ProspectDetailPage() {
 
         {/* Document Section */}
         <div className="glass-panel mb-8">
-          <div className="px-8 py-6 border-b border-volcanic-foam/10">
-            <h2 className="text-2xl font-light text-volcanic-foam-light">Documents</h2>
+          <div className="px-8 py-6 border-b border-white/10">
+            <h2 className="text-2xl font-light text-white">Documents</h2>
           </div>
           <div className="px-8 py-8">
             {account.documents && account.documents.length > 0 ? (
               <div className="space-y-4">
                 {account.documents.map(doc => (
-                  <div key={doc.id} className="glass-panel p-6 hover:bg-volcanic-ash/30 transition-all">
+                  <div key={doc.id} className="glass-panel p-6 hover:bg-white/[0.08] transition-all">
                     <div className="flex justify-between items-center">
                       <div>
-                        <h3 className="font-medium text-volcanic-foam-light text-lg mb-2">{doc.type}</h3>
-                        <p className="text-sm text-volcanic-foam/60 font-light">
+                        <h3 className="font-medium text-white text-lg mb-2">{doc.type}</h3>
+                        <p className="text-sm text-white/60 font-light">
                           Last modified: {new Date(doc.lastModified).toLocaleDateString()}
                         </p>
                       </div>
                       <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium 
                                      bg-gradient-to-r ${getStatusBadgeColor(doc.status)} 
-                                     backdrop-blur-glass border text-white shadow-sm`}>
+                                     backdrop-blur-sm border text-white shadow-sm`}>
                         {doc.status}
                       </span>
                     </div>
@@ -198,11 +198,11 @@ function ProspectDetailPage() {
               </div>
             ) : (
               <div className="text-center py-16">
-                <svg className="mx-auto h-20 w-20 text-volcanic-foam/20 mb-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="mx-auto h-20 w-20 text-white/20 mb-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} 
                         d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                <p className="text-volcanic-foam/50 font-light mb-8">No documents generated yet</p>
+                <p className="text-white/50 font-light mb-8">No documents generated yet</p>
                 <button
                   onClick={handleGenerateDocument}
                   disabled={generating}
@@ -230,11 +230,11 @@ function ProspectDetailPage() {
 
         {/* File Upload Section (placeholder for Milestone 5) */}
         <div className="glass-panel">
-          <div className="px-8 py-6 border-b border-volcanic-foam/10">
-            <h2 className="text-2xl font-light text-volcanic-foam-light">Context Files</h2>
+          <div className="px-8 py-6 border-b border-white/10">
+            <h2 className="text-2xl font-light text-white">Context Files</h2>
           </div>
           <div className="px-8 py-8">
-            <p className="text-sm text-volcanic-foam/50 font-light">File upload will be implemented in Milestone 5</p>
+            <p className="text-sm text-white/50 font-light">File upload will be implemented in Milestone 5</p>
           </div>
         </div>
       </div>
