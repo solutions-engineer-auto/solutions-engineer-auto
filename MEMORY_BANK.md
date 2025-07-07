@@ -25,6 +25,23 @@
   - `postcss.config.js` - For TailwindCSS processing
   - Updated `src/index.css` with Tailwind directives
 
+### Milestone 2: Auth Flow - Mocked (COMPLETED)
+- **Date**: July 7, 2025
+- **Status**: ✅ Complete
+- **Components Created**:
+  - `LoginPage` - Clean login UI with demo engineer button
+  - `RequireAuth` - Route guard component for protected routes
+  - `AccountDashboard` - Placeholder with logout functionality
+- **Features Implemented**:
+  - Login stores `userId` in localStorage
+  - Protected routes redirect to login if not authenticated
+  - Logout clears localStorage and redirects to login
+  - React Router setup with proper routing structure
+- **Routes Configured**:
+  - `/login` - Public login page
+  - `/accounts` - Protected account dashboard
+  - `/` - Redirects to `/accounts`
+
 ## Tech Stack Reference
 - **Frontend**: React + Vite
 - **Styling**: TailwindCSS
@@ -34,7 +51,8 @@
 - **API Mocking**: MSW
 
 ## Next Steps
-- Milestone 2: Auth Flow (Mocked)
-  - Create login route and page
-  - Implement demo engineer login
-  - Set up protected routes
+- Milestone 3: Account Dashboard
+  - Set up MSW handlers for GET /accounts
+  - Create account card components
+  - Implement filter by stage
+  - Add navigation to account detail view
