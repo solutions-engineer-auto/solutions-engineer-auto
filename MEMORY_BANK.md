@@ -42,6 +42,24 @@
   - `/accounts` - Protected account dashboard
   - `/` - Redirects to `/accounts`
 
+### Milestone 3: Account Dashboard (COMPLETED)
+- **Date**: July 7, 2025
+- **Status**: ✅ Complete
+- **Components Created**:
+  - `AccountCard` - Displays individual account with status badges
+  - MSW handlers for API mocking
+  - Browser setup for MSW service worker
+- **Features Implemented**:
+  - Fetches accounts from mocked GET /accounts API
+  - Displays accounts in responsive grid layout
+  - Filter by sales stage functionality
+  - Color-coded badges for stages and document status
+  - Click navigation to account detail (route ready)
+- **Mock Data**:
+  - 5 sample accounts with different stages
+  - Document statuses: draft, finalized, or none
+  - Account details include name, value, contact, stage
+
 ## Tech Stack Reference
 - **Frontend**: React + Vite
 - **Styling**: TailwindCSS
@@ -50,9 +68,15 @@
 - **State**: Zustand
 - **API Mocking**: MSW
 
+## API Endpoints Mocked
+- `GET /api/accounts` - Returns list of all accounts
+- `GET /api/accounts/:id` - Returns single account details
+- `POST /api/accounts/:id/upload` - File upload endpoint
+- `POST /api/documents/generate` - Document generation endpoint
+
 ## Next Steps
-- Milestone 3: Account Dashboard
-  - Set up MSW handlers for GET /accounts
-  - Create account card components
-  - Implement filter by stage
-  - Add navigation to account detail view
+- Milestone 4: Prospect Detail View
+  - Create ProspectDetailPage component
+  - Add route for /accounts/:id
+  - Display account summary and documents
+  - Add "Generate Suggested Document" button
