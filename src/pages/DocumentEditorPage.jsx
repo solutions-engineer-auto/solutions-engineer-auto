@@ -130,11 +130,17 @@ function DocumentEditorPage() {
             }
           }
         } else {
-          const response = await fetch(`/api/documents/${docId}`)
-          if (!response.ok) {
-            throw new Error(`Document fetch failed with status: ${response.status}`)
-          }
-          data = await response.json()
+          // Fetch document from Supabase
+          const { data: docData, error } = await supabase
+            .from('documents')
+            .select('*')
+            .eq('id', docId)
+            .single()
+          
+          if (error) throw error
+          if (!docData) throw new Error('Document not found')
+          
+          data = docData
         }
         
         setDocumentData(data)
@@ -192,16 +198,16 @@ function DocumentEditorPage() {
         sessionStorage.setItem(docKey, JSON.stringify(updatedDocData))
         setDocumentData(updatedDocData)
       } else {
-        const response = await fetch(`/api/documents/${docId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            content,
-            status: documentData?.status || 'draft'
+        // Update document in Supabase
+        const { error } = await supabase
+          .from('documents')
+          .update({ 
+            content: content,
+            // Note: updated_at will be automatically updated by the trigger in the database
           })
-        })
+          .eq('id', docId)
         
-        if (!response.ok) throw new Error('Failed to save')
+        if (error) throw error
       }
       
       setIsDirty(false)
@@ -264,16 +270,16 @@ function DocumentEditorPage() {
 
     setSaving(true)
     try {
-      const response = await fetch(`/api/documents/${docId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      // Update document status in Supabase
+      const { error } = await supabase
+        .from('documents')
+        .update({ 
           content: editor.getHTML(),
           status: newStatus
         })
-      })
+        .eq('id', docId)
       
-      if (!response.ok) throw new Error('Failed to update status')
+      if (error) throw error
       
       setDocumentData({ ...documentData, status: newStatus })
       setIsDirty(false)
