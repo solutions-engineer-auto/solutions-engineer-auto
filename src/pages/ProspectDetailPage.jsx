@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import FileUploadDropzone from '../components/FileUploadDropzone'
@@ -6,6 +6,7 @@ import documentProcessor from '../services/documentProcessor'
 import TemplateSelectionModal from '../components/TemplateSelectionModal'
 import DocumentCreationModal from '../components/DocumentCreationModal'
 import AccountDeletionModal from '../components/AccountDeletionModal'
+import { generateDocument, isOpenAIConfigured } from '../services/openai'
 
 function ProspectDetailPage() {
   const { id } = useParams()
@@ -24,6 +25,11 @@ function ProspectDetailPage() {
   const [isSavingAccount, setIsSavingAccount] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+  const [showAIGenerateModal, setShowAIGenerateModal] = useState(false)
+  const [generatingProgress, setGeneratingProgress] = useState(null)
+  
+  const promptRef = useRef(null)
+  const titleRef = useRef(null)
 
   const stageOptions = ['Discovery', 'Pre-Sales', 'Pilot Deployment', 'Post-Sale']
 
@@ -426,6 +432,72 @@ function ProspectDetailPage() {
     setEditedAccount({})
   }
 
+  const handleAIGenerateDocument = async (e) => {
+    e.preventDefault()
+    
+    const prompt = promptRef.current?.value
+    const title = titleRef.current?.value
+    
+    if (!prompt || !title) return
+    
+    setGenerating(true)
+    setGeneratingProgress({ activity: { type: 'thinking', message: 'Processing your request...' } })
+    
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error("User not authenticated")
+      
+      // Get account context
+      const context = `Account: ${account.name}, Stage: ${account.stage}, Description: ${account.description || 'N/A'}`
+      
+      // Generate document content with AI
+      const htmlContent = await generateDocument({
+        prompt,
+        documentType: null, // Let AI determine type
+        context,
+        onProgress: (content, activity) => {
+          if (activity) {
+            setGeneratingProgress({ activity })
+          } else if (content) {
+            setGeneratingProgress({ preview: content, activity: null })
+          }
+        }
+      })
+      
+      // Create document in database
+      const { data: newDoc, error } = await supabase
+        .from('documents')
+        .insert({
+          title: title,
+          content: htmlContent,
+          document_type: null,
+          account_id: id,
+          author_id: user.id,
+          status: 'draft'
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      
+      // Close modal and navigate
+      setShowAIGenerateModal(false)
+      navigate(`/accounts/${id}/documents/${newDoc.id}`)
+      
+    } catch (error) {
+      console.error('Failed to generate document:', error)
+      setGeneratingProgress({ 
+        activity: { 
+          type: 'error', 
+          message: error.message || 'Failed to generate document' 
+        } 
+      })
+    } finally {
+      setGenerating(false)
+    }
+  }
+
   const handleDeleteAccount = async () => {
     setIsDeletingAccount(true)
     try {
@@ -736,26 +808,28 @@ function ProspectDetailPage() {
           <div className="px-8 py-6 border-b border-white/10 flex justify-between items-center">
             <h2 className="text-2xl font-light text-white">Documents</h2>
             <div className="flex items-center space-x-3">
-              {/* AI Generate Button - Placeholder for future */}
+              {/* AI Generate Button */}
               <button
-                onClick={() => {
-                  // Placeholder - will be implemented with LangGraph
-                  console.log('AI generation coming soon!')
-                }}
-                disabled={true}
-                className="btn-volcanic-primary inline-flex items-center space-x-2 text-sm opacity-50 cursor-not-allowed relative group"
-                title="Coming soon: AI-powered document generation"
+                onClick={() => setShowAIGenerateModal(true)}
+                disabled={generating}
+                className="btn-volcanic-primary inline-flex items-center space-x-2 text-sm"
+                title="Generate document with AI"
               >
-                {/* AI/Sparkles Icon */}
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                        d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                </svg>
-                <span>Generate Document</span>
-                {/* Tooltip */}
-                <span className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                  Coming soon: AI-powered generation
-                </span>
+                {generating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+                    <span>Generating...</span>
+                  </>
+                ) : (
+                  <>
+                    {/* AI/Sparkles Icon */}
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                            d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                    </svg>
+                    <span>Generate Document</span>
+                  </>
+                )}
               </button>
 
               {/* Create Empty Document Button */}
@@ -1051,6 +1125,124 @@ function ProspectDetailPage() {
         accountName={account?.name || ''}
         isLoading={isDeletingAccount}
       />
+
+      {/* AI Generate Document Modal */}
+      {showAIGenerateModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="glass-panel p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-light text-white mb-6">Generate Document with AI</h2>
+            
+            {!isOpenAIConfigured() ? (
+              <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-4 mb-6">
+                <p className="text-red-400 text-sm">
+                  OpenAI API key not configured. Please add VITE_OPENAI_API_KEY to your .env file.
+                </p>
+              </div>
+            ) : null}
+            
+            <form onSubmit={handleAIGenerateDocument}>
+              <div className="mb-6">
+                <label htmlFor="document-prompt" className="block text-white/80 mb-2">
+                  What kind of document would you like to generate?
+                </label>
+                <textarea
+                  id="document-prompt"
+                  ref={promptRef}
+                  className="w-full p-4 bg-black/40 text-white rounded-lg border border-white/10 
+                           focus:border-cyan-500/50 transition-colors outline-none resize-none"
+                  rows={4}
+                  placeholder="e.g., Generate a Statement of Work for Project Phoenix with sections for scope, timeline, deliverables, and pricing"
+                  required
+                  disabled={generating}
+                />
+              </div>
+              
+              <div className="mb-6">
+                <label htmlFor="document-title" className="block text-white/80 mb-2">
+                  Document Title
+                </label>
+                <input
+                  id="document-title"
+                  ref={titleRef}
+                  type="text"
+                  className="w-full p-4 bg-black/40 text-white rounded-lg border border-white/10 
+                           focus:border-cyan-500/50 transition-colors outline-none"
+                  placeholder="e.g., Project Phoenix SOW"
+                  required
+                  disabled={generating}
+                />
+              </div>
+              
+              {generatingProgress && (
+                <div className="mb-6 p-4 bg-white/5 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    {generatingProgress.activity ? (
+                      <>
+                        <div className="animate-pulse">
+                          {generatingProgress.activity.type === 'thinking' && '🤔'}
+                          {generatingProgress.activity.type === 'generating' && '✨'}
+                          {generatingProgress.activity.type === 'error' && '❌'}
+                        </div>
+                        <span className="text-white/70 text-sm">
+                          {generatingProgress.activity.message}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+                        <span className="text-white/70 text-sm">Generating content...</span>
+                      </>
+                    )}
+                  </div>
+                  
+                  {generatingProgress.preview && (
+                    <div className="mt-4 p-3 bg-black/40 rounded border border-white/10">
+                      <div className="text-white/60 text-xs mb-2">Preview:</div>
+                      <div 
+                        className="text-white/80 text-sm max-h-32 overflow-y-auto prose prose-invert prose-sm"
+                        dangerouslySetInnerHTML={{ 
+                          __html: generatingProgress.preview.substring(0, 200) + '...' 
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAIGenerateModal(false)}
+                  className="btn-volcanic"
+                  disabled={generating}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-volcanic-primary inline-flex items-center space-x-2"
+                  disabled={generating || !isOpenAIConfigured()}
+                >
+                  {generating ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+                      <span>Generating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                              d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                      </svg>
+                      <span>Generate Document</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -38,6 +38,7 @@
     "file-saver": "^2.0.5",
     "html2pdf.js": "^0.10.3",
     "mammoth": "^1.9.1",
+    "openai": "^5.8.3",
     "pdfjs-dist": "^5.3.93",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

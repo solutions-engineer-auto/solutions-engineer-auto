@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
@@ -10,6 +10,7 @@ import Placeholder from '@tiptap/extension-placeholder'
 import TextAlign from '@tiptap/extension-text-align'
 import TextStyle from '@tiptap/extension-text-style'
 import AIChatPanel from '../components/AIChat/AIChatPanel'
+import { modifyDocument, isOpenAIConfigured } from '../services/openai'
 import ExportModal from '../components/ExportModal'
 import { supabase } from '../supabaseClient'
 
@@ -26,6 +27,10 @@ function DocumentEditorPage() {
   const [selectedText, setSelectedText] = useState('')
   const [initialContent, setInitialContent] = useState('')
   const [showAIChat, setShowAIChat] = useState(false)
+  const [regenerating, setRegenerating] = useState(false)
+  const [regeneratingError, setRegeneratingError] = useState(null)
+  
+  const aiInstructionRef = useRef(null)
 
   // Initialize TipTap editor
   const editor = useEditor({
@@ -295,6 +300,53 @@ function DocumentEditorPage() {
       alert('Failed to update document status')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleAIRegenerate = async () => {
+    const instruction = aiInstructionRef.current?.value
+    if (!instruction || !selectedText || !editor) return
+    
+    setRegenerating(true)
+    setRegeneratingError(null)
+    
+    try {
+      // Get the selected text's position in the editor
+      const { state } = editor
+      const { selection } = state
+      
+      // Generate modified text with AI
+      const modifiedText = await modifyDocument({
+        text: selectedText,
+        instruction,
+        onProgress: (progress) => {
+          // Could add progress UI here if needed
+          console.log('AI Progress:', progress)
+        }
+      })
+      
+      // Replace the selected text with the modified version
+      editor.chain()
+        .focus()
+        .setTextSelection({ from: selection.from, to: selection.to })
+        .insertContent(modifiedText)
+        .run()
+      
+      // Mark document as dirty
+      setIsDirty(true)
+      
+      // Close modal
+      setShowAIModal(false)
+      setSelectedText('')
+      if (aiInstructionRef.current) {
+        aiInstructionRef.current.value = ''
+      }
+      
+    } catch (error) {
+      console.error('AI regeneration failed:', error)
+      setRegeneratingError(error.message || 'Failed to regenerate text. Please try again.')
+    } finally {
+      setRegenerating(false)
     }
   }
 
@@ -675,7 +727,15 @@ function DocumentEditorPage() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="glass-panel p-8 max-w-lg w-full mx-4">
             <h2 className="text-2xl font-light text-white mb-6">AI Text Regeneration</h2>
-            <p className="text-sm text-cyan-400 mb-4">[UI Ready - Backend Integration Pending]</p>
+            
+            {!isOpenAIConfigured() ? (
+              <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-4 mb-6">
+                <p className="text-red-400 text-sm">
+                  OpenAI API key not configured. Please add VITE_OPENAI_API_KEY to your .env file.
+                </p>
+              </div>
+            ) : null}
+            
             <p className="text-white/70 mb-4">Selected text:</p>
             <div className="bg-black/40 p-4 rounded-lg mb-6 text-white/80 italic">
               "{selectedText}"
@@ -684,26 +744,49 @@ function DocumentEditorPage() {
               How would you like to modify this text?
             </p>
             <textarea
-                              className="w-full p-3 bg-black/40 text-white rounded-lg border border-white/10 focus:border-cyan-500/50 transition-colors outline-none"
+              ref={aiInstructionRef}
+              className="w-full p-3 bg-black/40 text-white rounded-lg border border-white/10 focus:border-cyan-500/50 transition-colors outline-none"
               rows={3}
               placeholder="e.g., Make it more formal, add technical details, simplify..."
+              disabled={regenerating}
             />
+            
+            {regeneratingError && (
+              <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded text-red-400 text-sm">
+                {regeneratingError}
+              </div>
+            )}
+            
             <div className="flex justify-end space-x-3 mt-6">
               <button
-                onClick={() => setShowAIModal(false)}
+                onClick={() => {
+                  setShowAIModal(false)
+                  setRegeneratingError(null)
+                }}
                 className="btn-volcanic"
+                disabled={regenerating}
               >
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  // TODO: Integrate with AI service when ready
-                  alert('AI integration pending - this button is ready for backend connection')
-                  setShowAIModal(false)
-                }}
-                className="btn-volcanic-primary"
+                onClick={handleAIRegenerate}
+                className="btn-volcanic-primary inline-flex items-center space-x-2"
+                disabled={regenerating || !isOpenAIConfigured()}
               >
-                Regenerate
+                {regenerating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+                    <span>Regenerating...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span>Regenerate</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

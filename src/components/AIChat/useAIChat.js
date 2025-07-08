@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { streamChatCompletion, isOpenAIConfigured } from '../../services/openai';
 
-// Simulated AI activities similar to Cursor
+// Simulated AI activities for fallback mode
 const AI_ACTIVITIES = [
   { type: 'thinking', message: 'Thinking...', duration: 1000 },
   { type: 'reading', message: 'Reading document...', duration: 1500 },
@@ -9,7 +10,7 @@ const AI_ACTIVITIES = [
   { type: 'generating', message: 'Generating response...', duration: 800 }
 ];
 
-// Simulated responses for demo
+// Simulated responses for when OpenAI is not configured
 const MOCK_RESPONSES = [
   "I've analyzed your document and found several key points that could be improved. Here's what I suggest:\n\n1. **Structure Enhancement**: Consider reorganizing the sections for better flow\n2. **Code Examples**: Add more practical examples to illustrate concepts\n3. **Performance Tips**: Include optimization strategies\n\n```javascript\n// Example code snippet\nconst optimizedFunction = useCallback(() => {\n  // Your logic here\n}, [dependencies]);\n```",
   "Based on my analysis of the codebase:\n\n- The current implementation follows React best practices\n- Consider adding error boundaries for better error handling\n- The component structure is clean and modular\n\nWould you like me to elaborate on any of these points?",
@@ -71,31 +72,77 @@ export const useAIChat = () => {
     setStreamingMessage('');
 
     try {
-      // Simulate AI activities
-      await simulateActivities();
+      // Check if OpenAI is configured
+      if (!isOpenAIConfigured()) {
+        // Fall back to simulated mode
+        await simulateActivities();
+        const response = MOCK_RESPONSES[Math.floor(Math.random() * MOCK_RESPONSES.length)];
+        const fullResponse = await simulateStreaming(response);
+        
+        const aiMessage = {
+          id: Date.now() + 1,
+          role: 'assistant',
+          content: fullResponse,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, aiMessage]);
+        setStreamingMessage('');
+        return;
+      }
 
-      // Get random response
-      const response = MOCK_RESPONSES[Math.floor(Math.random() * MOCK_RESPONSES.length)];
+      // Use real OpenAI API
+      const messagesToSend = messages.slice(-10).map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+      messagesToSend.push({ role: 'user', content: content.trim() });
+
+      let streamingContent = '';
       
-      // Simulate streaming
-      const fullResponse = await simulateStreaming(response);
-
-      // Add AI message
-      const aiMessage = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: fullResponse,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, aiMessage]);
-      setStreamingMessage('');
+      await streamChatCompletion({
+        messages: messagesToSend,
+        onChunk: (chunk) => {
+          streamingContent += chunk;
+          setStreamingMessage(streamingContent);
+        },
+        onActivity: (activity) => {
+          setCurrentActivity(activity);
+        },
+        onComplete: (fullContent) => {
+          // Add AI message
+          const aiMessage = {
+            id: Date.now() + 1,
+            role: 'assistant',
+            content: fullContent,
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, aiMessage]);
+          setStreamingMessage('');
+        },
+        onError: (error) => {
+          console.error('OpenAI chat error:', error);
+          setCurrentActivity({ type: 'error', message: error.message || 'Something went wrong...' });
+        }
+      });
+      
     } catch (error) {
       console.error('Chat error:', error);
       setCurrentActivity({ type: 'error', message: 'Something went wrong...' });
+      
+      // Show error message
+      const errorMessage = {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: `I encountered an error: ${error.message}. Please try again.`,
+        timestamp: new Date(),
+        isError: true
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      setStreamingMessage('');
     } finally {
       setIsStreaming(false);
     }
-  }, [isStreaming]);
+  }, [isStreaming, messages]);
 
   // Connect to real SSE endpoint (for future use)
   const connectToStream = useCallback((endpoint) => {
