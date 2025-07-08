@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { supabase } from '../supabaseClient'
 import FileUploadDropzone from '../components/FileUploadDropzone'
 import documentProcessor from '../services/documentProcessor'
 
@@ -10,52 +11,92 @@ function ProspectDetailPage() {
   const [account, setAccount] = useState(null)
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
-  const [uploadedDocuments, setUploadedDocuments] = useState([])
+  const [dataSources, setDataSources] = useState([])
   const [processingFile, setProcessingFile] = useState(false)
   const [processingProgress, setProcessingProgress] = useState({ percent: 0, message: '' })
+
+  const fetchAccountDetails = async () => {
+    try {
+      setLoading(true);
+      // Fetch account details
+      const { data: accountData, error: accountError } = await supabase
+        .from('accounts')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (accountError) throw accountError;
+      if (!accountData) throw new Error('Account not found');
+
+      // Fetch associated documents
+      const { data: documentsData, error: documentsError } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('account_id', id);
+      
+      if (documentsError) throw documentsError;
+
+      // Combine and set state
+      setAccount({ ...accountData, documents: documentsData || [] });
+      await fetchAccountDataSources();
+
+    } catch (error) {
+      console.error('Failed to fetch account details:', error.message);
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  const fetchAccountDataSources = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('account_data_sources')
+        .select('*')
+        .eq('account_id', id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setDataSources(data || []);
+    } catch (error) {
+      console.error('Failed to fetch account data sources:', error);
+    }
+  };
+
 
   useEffect(() => {
     fetchAccountDetails()
   }, [id])
 
-  const fetchAccountDetails = async () => {
-    try {
-      const response = await fetch(`/api/accounts/${id}`)
-      if (!response.ok) {
-        throw new Error('Account not found')
-      }
-      const data = await response.json()
-      setAccount(data)
-    } catch (error) {
-      console.error('Failed to fetch account:', error)
-      // Could redirect to 404 or show error
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleGenerateDocument = async () => {
+    const title = window.prompt('Enter new document title:');
+    if (!title) {
+      // User cancelled or entered an empty title
+      return;
+    }
+
     setGenerating(true)
     try {
-      const response = await fetch('/api/documents/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          accountId: account.id,
-          accountName: account.name,
-          stage: account.stage
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      const { data: newDoc, error } = await supabase
+        .from('documents')
+        .insert({
+          title: title,
+          account_id: account.id,
+          author_id: user.id,
         })
-      })
+        .select()
+        .single();
+
+      if (error) throw error;
       
-      const data = await response.json()
-      
-      // Navigate to the document editor
-      navigate(`/accounts/${id}/documents/${data.documentId}`)
+      // Navigate to the new document's editor page
+      navigate(`/accounts/${id}/documents/${newDoc.id}`);
     } catch (error) {
-      console.error('Failed to generate document:', error)
-      alert('Failed to generate document. Please try again.')
+      console.error('Failed to generate document:', error);
+      alert('Failed to generate document. Please try again.');
     } finally {
       setGenerating(false)
     }
@@ -65,45 +106,32 @@ function ProspectDetailPage() {
     if (files.length === 0) return
     
     const file = files[0] // Process first file
-    console.log('File selected:', file.name, 'Type:', file.type, 'Size:', file.size)
     
     setProcessingFile(true)
-    setProcessingProgress({ percent: 0, message: 'Starting...' })
+    setProcessingProgress({ percent: 0, message: `Processing ${file.name}...` })
     
     try {
       const result = await documentProcessor.processFile(file, (percent, message) => {
         setProcessingProgress({ percent, message })
       })
       
-      console.log('Processing result:', result)
-      
       if (result.success) {
-        const processedDoc = {
-          id: Date.now().toString(),
-          fileName: file.name,
-          fileSize: file.size,
-          uploadedAt: new Date().toISOString(),
-          html: result.html,
-          metadata: result.metadata,
-          originalFile: file
-        }
+        setProcessingProgress({ percent: 100, message: 'Saving to database...' })
+
+        const { error } = await supabase
+          .from('account_data_sources')
+          .insert({
+            account_id: id,
+            file_name: file.name,
+            file_type: file.type,
+            content: result.html,
+            metadata: result.metadata,
+          })
+
+        if (error) throw error
         
-        console.log('Processed document object:', processedDoc)
-        console.log('HTML content length:', processedDoc.html?.length)
-        
-        setUploadedDocuments(prev => [...prev, processedDoc])
-        
-        // Store in browser's sessionStorage for this session
-        const storageKey = `uploaded_docs_${id}`
-        const existing = JSON.parse(sessionStorage.getItem(storageKey) || '[]')
-        
-        // Don't store the originalFile in sessionStorage (it's too large)
-        const docForStorage = { ...processedDoc }
-        delete docForStorage.originalFile
-        
-        sessionStorage.setItem(storageKey, JSON.stringify([...existing, docForStorage]))
-        
-        // Show success feedback
+        await fetchAccountDataSources()
+
         setProcessingProgress({ percent: 100, message: 'Processing complete!' })
         setTimeout(() => {
           setProcessingFile(false)
@@ -114,65 +142,44 @@ function ProspectDetailPage() {
         setProcessingFile(false)
       }
     } catch (error) {
-      console.error('File processing error:', error)
-      alert('An error occurred while processing the file')
+      console.error('File processing or saving error:', error)
+      alert(`An error occurred: ${error.message}`)
       setProcessingFile(false)
+      setProcessingProgress({ percent: 0, message: '' })
     }
   }
 
   const handleLoadIntoEditor = (document) => {
-    console.log('handleLoadIntoEditor called with document:', document)
-    console.log('Document HTML exists?', !!document.html)
-    console.log('Document HTML length:', document.html?.length)
-    console.log('Document HTML preview:', document.html?.substring(0, 100))
-    
-    if (!document.html) {
-      alert('Error: Document has no HTML content. Please re-upload the file.')
-      return
-    }
-    
-    // Store the complete document in a more reliable way
-    const docToStore = {
-      id: `uploaded-${document.id}`,
-      content: document.html,
-      status: 'draft',
-      title: document.metadata?.title || document.fileName || 'Uploaded Document',
-      metadata: document.metadata || {},
-      lastSaved: new Date().toISOString()
-    }
-    
-    // Use a specific key for this document
-    const docKey = `doc_content_${id}_uploaded-${document.id}`
-    sessionStorage.setItem(docKey, JSON.stringify(docToStore))
-    
-    // Also store in the temp location as backup
-    sessionStorage.setItem('temp_document_content', document.html)
-    sessionStorage.setItem('temp_document_metadata', JSON.stringify(document.metadata))
-    
-    // Verify it was stored
-    const stored = sessionStorage.getItem(docKey)
-    console.log('Verified document storage:', stored ? `Success in ${docKey}` : 'Failed')
-    
-    // Navigate immediately - sessionStorage is synchronous
-    navigate(`/accounts/${id}/documents/uploaded-${document.id}`)
+    // This functionality is currently disabled.
+    console.log('Load into editor clicked for:', document)
   }
 
-  const removeUploadedDocument = (docId) => {
-    setUploadedDocuments(prev => prev.filter(doc => doc.id !== docId))
-    
-    // Update sessionStorage
-    const storageKey = `uploaded_docs_${id}`
-    const existing = JSON.parse(sessionStorage.getItem(storageKey) || '[]')
-    sessionStorage.setItem(storageKey, JSON.stringify(existing.filter(doc => doc.id !== docId)))
+  const removeUploadedDocument = async (docId) => {
+    if (!window.confirm('Are you sure you want to remove this context file?')) return
+
+    try {
+      const { error } = await supabase
+        .from('account_data_sources')
+        .delete()
+        .eq('id', docId)
+
+      if (error) throw error
+
+      await fetchAccountDataSources()
+    } catch (error) {
+      console.error('Failed to remove document:', error)
+      alert(`Failed to remove document: ${error.message}`)
+    }
   }
 
   // Load previously uploaded documents from sessionStorage
-  useEffect(() => {
-    const storageKey = `uploaded_docs_${id}`
-    const stored = JSON.parse(sessionStorage.getItem(storageKey) || '[]')
-    console.log('Loading uploaded documents from sessionStorage:', stored)
-    setUploadedDocuments(stored)
-  }, [id])
+  // This is now handled by fetchAccountDataSources
+  // useEffect(() => {
+  //   const storageKey = `uploaded_docs_${id}`
+  //   const stored = JSON.parse(sessionStorage.getItem(storageKey) || '[]')
+  //   console.log('Loading uploaded documents from sessionStorage:', stored)
+  //   setUploadedDocuments(stored)
+  // }, [id])
 
   if (loading) {
     return (
@@ -325,9 +332,9 @@ function ProspectDetailPage() {
                   >
                     <div className="flex justify-between items-center">
                       <div>
-                        <h3 className="font-medium text-white text-lg mb-2">{doc.type}</h3>
+                        <h3 className="font-medium text-white text-lg mb-2">{doc.title}</h3>
                         <p className="text-sm text-white/60 font-light">
-                          Last modified: {new Date(doc.lastModified).toLocaleDateString()}
+                          Last modified: {new Date(doc.updated_at).toLocaleDateString()}
                         </p>
                       </div>
                       <div className="flex items-center space-x-3">
@@ -406,20 +413,20 @@ function ProspectDetailPage() {
             )}
             
             {/* Uploaded Documents */}
-            {uploadedDocuments.length > 0 && (
+            {dataSources.length > 0 && (
               <div className="mt-8">
                 <h3 className="text-lg font-light text-white mb-4">Processed Documents</h3>
                 <div className="space-y-3">
-                  {uploadedDocuments.map(doc => (
+                  {dataSources.map(doc => (
                     <div 
                       key={doc.id}
                       className="glass-panel p-4 hover:bg-white/[0.08] transition-all"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <h4 className="font-medium text-white">{doc.fileName}</h4>
+                          <h4 className="font-medium text-white">{doc.file_name || doc.name}</h4>
                           <p className="text-sm text-white/50 mt-1">
-                            Processed {new Date(doc.uploadedAt).toLocaleString()}
+                            Processed {new Date(doc.created_at).toLocaleString()}
                           </p>
                           {doc.metadata?.warning && (
                             <p className="text-sm text-yellow-400/70 mt-1">
@@ -430,7 +437,9 @@ function ProspectDetailPage() {
                         <div className="flex items-center space-x-2 ml-4">
                           <button
                             onClick={() => handleLoadIntoEditor(doc)}
-                            className="btn-volcanic text-sm px-4 py-2"
+                            className="btn-volcanic text-sm px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={true}
+                            title="Editing context documents will be available in a future update."
                           >
                             Edit in Editor
                           </button>

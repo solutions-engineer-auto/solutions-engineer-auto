@@ -44,17 +44,17 @@ This document outlines the phased implementation plan for building the Granola A
 ### Tasks & Subtasks:
 
 1.  **Integrate Account Management**
-    *   [ ] **✅** Build the Account Dashboard UI (`src/pages/AccountDashboard.jsx`).
-    *   [ ] **✅** Build the Account Card component (`src/components/AccountCard.jsx`).
-    *   [ ] Replace the MSW API call in `AccountDashboard.jsx` with a Supabase query to fetch accounts owned by the logged-in user.
-    *   [ ] Implement functionality to create a new account and save it to the `accounts` table.
+    *   [X] **✅** Build the Account Dashboard UI (`src/pages/AccountDashboard.jsx`).
+    *   [X] **✅** Build the Account Card component (`src/components/AccountCard.jsx`).
+    *   [X] Replace the MSW API call in `AccountDashboard.jsx` with a Supabase query to fetch accounts owned by the logged-in user.
+    *   [X] Implement functionality to create a new account and save it to the `accounts` table.
 
 2.  **Integrate Document Management**
-    *   [ ] **✅** Build the Prospect Detail page UI (`src/pages/ProspectDetailPage.jsx`).
-    *   [ ] Replace the MSW API call in `ProspectDetailPage.jsx` to fetch account details and associated documents from Supabase.
-    *   [ ] **✅** Build the core Document Editor UI (`src/pages/DocumentEditorPage.jsx`).
-    *   [ ] Replace the MSW API calls in `DocumentEditorPage.jsx` to fetch and save document content to the `documents` table.
-    *   [ ] Update the "Generate New Document" flow to create a new record in the `documents` table and associate it with the correct account and user.
+    *   [X] **✅** Build the Prospect Detail page UI (`src/pages/ProspectDetailPage.jsx`).
+    *   [X] Replace the MSW API call in `ProspectDetailPage.jsx` to fetch account details and associated documents from Supabase.
+    *   [X] **✅** Build the core Document Editor UI (`src/pages/DocumentEditorPage.jsx`).
+    *   [X] Replace the MSW API calls in `DocumentEditorPage.jsx` to fetch and save document content to the `documents` table.
+    *   [X] Update the "Generate New Document" flow to create a new record in the `documents` table and associate it with the correct account and user.
 
 3.  **Implement Document Export**
     *   [ ] **✅** Design and build the `ExportModal` component.

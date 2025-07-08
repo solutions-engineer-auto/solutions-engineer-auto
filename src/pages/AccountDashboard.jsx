@@ -24,15 +24,42 @@ function AccountDashboard() {
   }, [navigate]);
 
   const fetchAccounts = async (userId) => {
-    // This will be replaced with a Supabase query in the next phase
     try {
-      const response = await fetch('/api/accounts');
-      const data = await response.json();
-      setAccounts(data.accounts);
+      const { data, error } = await supabase
+        .from('accounts')
+        .select('*')
+        .eq('owner_id', userId);
+
+      if (error) throw error;
+
+      setAccounts(data);
     } catch (error) {
-      console.error('Failed to fetch accounts:', error);
+      console.error('Failed to fetch accounts:', error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateAccount = async () => {
+    const name = window.prompt('Enter new account name:');
+    if (name && user) {
+      try {
+        const { data, error } = await supabase
+          .from('accounts')
+          .insert([{ name: name, owner_id: user.id }])
+          .select();
+
+        if (error) {
+          throw error;
+        }
+
+        if (data) {
+          setAccounts(prevAccounts => [...prevAccounts, ...data]);
+        }
+      } catch (error) {
+        console.error('Error creating account:', error.message);
+        alert('Failed to create account.');
+      }
     }
   };
 
@@ -81,16 +108,24 @@ function AccountDashboard() {
                 Welcome back, <span className="text-cyan-500">{user?.email}</span>
               </p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="btn-volcanic flex items-center space-x-2 group"
-            >
-              <svg className="w-5 h-5 group-hover:text-cyan-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              <span>Logout</span>
-            </button>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={handleCreateAccount}
+                className="btn-volcanic-primary"
+              >
+                New Account
+              </button>
+              <button
+                onClick={handleLogout}
+                className="btn-volcanic flex items-center space-x-2 group"
+              >
+                <svg className="w-5 h-5 group-hover:text-cyan-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span>Logout</span>
+              </button>
+            </div>
           </div>
         </div>
 

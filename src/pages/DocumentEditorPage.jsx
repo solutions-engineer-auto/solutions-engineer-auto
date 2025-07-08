@@ -11,6 +11,7 @@ import TextAlign from '@tiptap/extension-text-align'
 import TextStyle from '@tiptap/extension-text-style'
 import AIChatPanel from '../components/AIChat/AIChatPanel'
 import ExportModal from '../components/ExportModal'
+import { supabase } from '../supabaseClient'
 
 function DocumentEditorPage() {
   const { accountId, docId } = useParams()
@@ -102,89 +103,49 @@ function DocumentEditorPage() {
   // Fetch document on mount
   useEffect(() => {
     const fetchDocument = async () => {
+      setLoading(true)
       try {
-        // Check if this is an uploaded document
-        if (docId.startsWith('uploaded-')) {
-          console.log('Loading uploaded document:', docId)
+        let data
+        const isUploadedDoc = docId && docId.startsWith('uploaded-')
+
+        if (isUploadedDoc) {
+          const docKey = `doc_content_${accountId}_${docId}`
+          const storedDoc = sessionStorage.getItem(docKey)
           
-          // Try multiple storage locations for uploaded documents
-          const docContentKey = `doc_content_${accountId}_${docId}`
-          const savedKey = `saved_doc_${accountId}_${docId}`
-          
-          // Check for document content first
-          let docData = sessionStorage.getItem(docContentKey)
-          if (docData) {
-            console.log('Found document in doc_content storage')
+          if (storedDoc) {
+            data = JSON.parse(storedDoc)
           } else {
-            // Check for saved document
-            docData = sessionStorage.getItem(savedKey)
-            if (docData) {
-              console.log('Found document in saved_doc storage')
-            }
-          }
-          
-          if (docData) {
-            const parsedDoc = JSON.parse(docData)
-            setDocumentData(parsedDoc)
-            setInitialContent(parsedDoc.content || '')
-            
-            if (editor && parsedDoc.content) {
-              editor.commands.setContent(parsedDoc.content)
-              setIsDirty(false)
-            }
-          } else {
-            // Try temporary storage for newly uploaded documents
-            console.log('All sessionStorage keys:', Object.keys(sessionStorage))
+             // Fallback for older implementation that used a generic key
             const tempContent = sessionStorage.getItem('temp_document_content')
-            const tempMetadata = sessionStorage.getItem('temp_document_metadata')
-            console.log('Content from temp sessionStorage:', tempContent ? `Found (${tempContent.length} chars)` : 'Not found')
-            console.log('Temp content preview:', tempContent?.substring(0, 100))
-            console.log('Metadata from sessionStorage:', tempMetadata)
-            
             if (tempContent) {
-            const metadata = tempMetadata ? JSON.parse(tempMetadata) : {}
-            const data = {
-              id: docId,
-              content: tempContent,
-              status: 'draft',
-              title: metadata.title || 'Uploaded Document',
-              metadata: metadata
-            }
-            
-            setDocumentData(data)
-            setInitialContent(data.content || '')
-            
-            // Load content into editor if it's ready
-            if (editor && data.content) {
-              editor.commands.setContent(data.content)
-              setIsDirty(false)
-            }
-            
-              // Clean up temporary storage
-              sessionStorage.removeItem('temp_document_content')
-              sessionStorage.removeItem('temp_document_metadata')
+              const tempMetadata = JSON.parse(sessionStorage.getItem('temp_document_metadata') || '{}')
+              data = {
+                id: docId,
+                content: tempContent,
+                status: 'draft',
+                title: tempMetadata.title || 'Uploaded Document'
+              }
             } else {
-              throw new Error('Uploaded document content not found')
+              throw new Error('Uploaded document content not found in this session.')
             }
           }
         } else {
-          // Fetch from API for regular documents
           const response = await fetch(`/api/documents/${docId}`)
-          
           if (!response.ok) {
             throw new Error(`Document fetch failed with status: ${response.status}`)
           }
-          
-          const data = await response.json()
-          
-          setDocumentData(data)
-          setInitialContent(data.content || '')
-          
-          // Load content into editor if it's ready
-          if (editor && data.content) {
-            editor.commands.setContent(data.content)
+          data = await response.json()
+        }
+        
+        setDocumentData(data)
+        const contentToLoad = data.content || ''
+        setInitialContent(contentToLoad)
+        
+        if (editor) {
+            if (editor.isDestroyed) return;
+            editor.commands.setContent(contentToLoad)
+            editor.setEditable(data.status !== 'finalized')
             setIsDirty(false)
-          }
         }
       } catch (error) {
         console.error('Failed to fetch document:', error)
@@ -195,72 +156,62 @@ function DocumentEditorPage() {
       }
     }
 
-    fetchDocument()
-  }, [docId, accountId, navigate])
+    if(docId && accountId) {
+        fetchDocument()
+    }
+  }, [docId, accountId, navigate, editor])
 
   // Update editor content when initialContent changes
   useEffect(() => {
-    console.log('Editor content update effect:', {
-      hasEditor: !!editor,
-      hasInitialContent: !!initialContent,
-      contentLength: initialContent?.length,
-      hasDocumentData: !!documentData
-    })
-    
     if (editor && initialContent && documentData) {
-      editor.commands.setContent(initialContent)
-      setIsDirty(false)
+        if(editor.getHTML() !== initialContent) {
+            editor.commands.setContent(initialContent)
+        }
+        setIsDirty(false)
     }
-  }, [editor, initialContent, documentData])
+  }, [initialContent, documentData, editor])
 
   // Define handleSave before using it in useEffect
   const handleSave = useCallback(async () => {
     if (!isDirty || !editor) return
     
     setSaving(true)
+    const isUploadedDoc = docId && docId.startsWith('uploaded-')
+    const content = editor.getHTML()
+
     try {
-      // Handle uploaded documents differently
-      if (docId.startsWith('uploaded-')) {
-        // For uploaded documents, save to sessionStorage
-        const storageKey = `saved_doc_${accountId}_${docId}`
-        const savedData = {
-          id: docId,
-          content: editor.getHTML(),
-          status: documentData?.status || 'draft',
-          lastSaved: new Date().toISOString(),
-          metadata: documentData?.metadata || {}
+      if (isUploadedDoc) {
+        const docKey = `doc_content_${accountId}_${docId}`
+        const existingDoc = JSON.parse(sessionStorage.getItem(docKey) || '{}')
+        const updatedDocData = {
+          ...documentData,
+          ...existingDoc,
+          content,
+          lastSaved: new Date().toISOString()
         }
-        sessionStorage.setItem(storageKey, JSON.stringify(savedData))
-        setIsDirty(false)
-        
-        // Update local state
-        setDocumentData(prevData => ({
-          ...prevData,
-          content: editor.getHTML(),
-          lastSaved: savedData.lastSaved
-        }))
+        sessionStorage.setItem(docKey, JSON.stringify(updatedDocData))
+        setDocumentData(updatedDocData)
       } else {
-        // Regular API save for generated documents
         const response = await fetch(`/api/documents/${docId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            content: editor.getHTML(),
+            content,
             status: documentData?.status || 'draft'
           })
         })
         
         if (!response.ok) throw new Error('Failed to save')
-        
-        setIsDirty(false)
       }
+      
+      setIsDirty(false)
     } catch (error) {
       console.error('Save failed:', error)
       alert('Failed to save document')
     } finally {
       setSaving(false)
     }
-  }, [isDirty, editor, docId, documentData, accountId])
+  }, [isDirty, editor, docId, accountId, documentData])
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -311,37 +262,21 @@ function DocumentEditorPage() {
 
     if (!editor) return
 
+    setSaving(true)
     try {
-      if (docId.startsWith('uploaded-')) {
-        // For uploaded documents, save to sessionStorage
-        const storageKey = `saved_doc_${accountId}_${docId}`
-        const savedData = {
-          id: docId,
+      const response = await fetch(`/api/documents/${docId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           content: editor.getHTML(),
-          status: newStatus,
-          lastSaved: new Date().toISOString(),
-          metadata: documentData?.metadata || {}
-        }
-        sessionStorage.setItem(storageKey, JSON.stringify(savedData))
-        
-        setDocumentData({ ...documentData, status: newStatus })
-        setIsDirty(false)
-      } else {
-        // Regular API update for generated documents
-        const response = await fetch(`/api/documents/${docId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            content: editor.getHTML(),
-            status: newStatus
-          })
+          status: newStatus
         })
-        
-        if (!response.ok) throw new Error('Failed to update status')
-        
-        setDocumentData({ ...documentData, status: newStatus })
-        setIsDirty(false)
-      }
+      })
+      
+      if (!response.ok) throw new Error('Failed to update status')
+      
+      setDocumentData({ ...documentData, status: newStatus })
+      setIsDirty(false)
       
       // Make document read-only if finalized
       if (newStatus === 'finalized') {
@@ -352,6 +287,8 @@ function DocumentEditorPage() {
     } catch (error) {
       console.error('Status update failed:', error)
       alert('Failed to update document status')
+    } finally {
+      setSaving(false)
     }
   }
 
