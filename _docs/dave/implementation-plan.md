@@ -13,9 +13,9 @@ This document outlines the phased implementation plan for building the Granola A
 ### Tasks & Subtasks:
 
 1.  **Set up Supabase Project**
-    *   [ ] Create a new project on Supabase Cloud.
-    *   [ ] Configure project settings (e.g., region, password).
-    *   [ ] Store API keys and project URL securely (e.g., in environment variables).
+    *   [X] Create a new project on Supabase Cloud.
+    *   [X] Configure project settings (e.g., region, password).
+    *   [X] Store API keys and project URL securely (e.g., in environment variables).
 
 2.  **Define Database Schema**
     *   [ ] Create a SQL migration script for the `accounts` table as defined in the project overview.

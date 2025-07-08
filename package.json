@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@opendocsg/pdf2md": "^0.2.1",
+    "@supabase/supabase-js": "^2.50.3",
     "@tailwindcss/typography": "^0.5.16",
     "@tiptap/extension-blockquote": "^2.25.0",
     "@tiptap/extension-bold": "^2.25.0",
@@ -33,6 +34,7 @@
     "@tiptap/react": "^2.25.0",
     "@tiptap/starter-kit": "^2.25.0",
     "docx": "^9.5.1",
+    "dotenv": "^17.1.0",
     "file-saver": "^2.0.5",
     "html2pdf.js": "^0.10.3",
     "mammoth": "^1.9.1",
