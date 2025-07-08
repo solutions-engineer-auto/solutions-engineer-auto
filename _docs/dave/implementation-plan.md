@@ -18,13 +18,13 @@ This document outlines the phased implementation plan for building the Granola A
     *   [X] Store API keys and project URL securely (e.g., in environment variables).
 
 2.  **Define Database Schema**
-    *   [ ] Create a SQL migration script for the `accounts` table as defined in the project overview.
-    *   [ ] Create a SQL migration script for the `documents` table.
-    *   [ ] Create a SQL migration script for the `chat_messages` table.
-    *   [ ] Create a SQL migration script for the `account_data_sources` table.
-    *   [ ] Apply migrations to the Supabase database.
-    *   [ ] Enable Row Level Security (RLS) on all tables containing user data.
-    *   [ ] Define RLS policies to ensure users can only access their own data.
+    *   [X] Create a SQL migration script for the `accounts` table as defined in the project overview.
+    *   [X] Create a SQL migration script for the `documents` table.
+    *   [X] Create a SQL migration script for the `chat_messages` table.
+    *   [X] Create a SQL migration script for the `account_data_sources` table.
+    *   [X] Apply migrations to the Supabase database.
+    *   [X] Enable Row Level Security (RLS) on all tables containing user data.
+    *   [X] Define RLS policies to ensure users can only access their own data.
 
 3.  **Implement User Authentication**
     *   [ ] Configure Supabase Auth (e.g., enable Email/Password provider).
