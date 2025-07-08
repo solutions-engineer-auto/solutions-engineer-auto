@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import FileUploadDropzone from '../components/FileUploadDropzone'
+import documentProcessor from '../services/documentProcessor'
 
 function ProspectDetailPage() {
   const { id } = useParams()
@@ -8,6 +10,9 @@ function ProspectDetailPage() {
   const [account, setAccount] = useState(null)
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
+  const [uploadedDocuments, setUploadedDocuments] = useState([])
+  const [processingFile, setProcessingFile] = useState(false)
+  const [processingProgress, setProcessingProgress] = useState({ percent: 0, message: '' })
 
   useEffect(() => {
     fetchAccountDetails()
@@ -55,6 +60,119 @@ function ProspectDetailPage() {
       setGenerating(false)
     }
   }
+
+  const handleFileSelect = async (files) => {
+    if (files.length === 0) return
+    
+    const file = files[0] // Process first file
+    console.log('File selected:', file.name, 'Type:', file.type, 'Size:', file.size)
+    
+    setProcessingFile(true)
+    setProcessingProgress({ percent: 0, message: 'Starting...' })
+    
+    try {
+      const result = await documentProcessor.processFile(file, (percent, message) => {
+        setProcessingProgress({ percent, message })
+      })
+      
+      console.log('Processing result:', result)
+      
+      if (result.success) {
+        const processedDoc = {
+          id: Date.now().toString(),
+          fileName: file.name,
+          fileSize: file.size,
+          uploadedAt: new Date().toISOString(),
+          html: result.html,
+          metadata: result.metadata,
+          originalFile: file
+        }
+        
+        console.log('Processed document object:', processedDoc)
+        console.log('HTML content length:', processedDoc.html?.length)
+        
+        setUploadedDocuments(prev => [...prev, processedDoc])
+        
+        // Store in browser's sessionStorage for this session
+        const storageKey = `uploaded_docs_${id}`
+        const existing = JSON.parse(sessionStorage.getItem(storageKey) || '[]')
+        
+        // Don't store the originalFile in sessionStorage (it's too large)
+        const docForStorage = { ...processedDoc }
+        delete docForStorage.originalFile
+        
+        sessionStorage.setItem(storageKey, JSON.stringify([...existing, docForStorage]))
+        
+        // Show success feedback
+        setProcessingProgress({ percent: 100, message: 'Processing complete!' })
+        setTimeout(() => {
+          setProcessingFile(false)
+          setProcessingProgress({ percent: 0, message: '' })
+        }, 2000)
+      } else {
+        alert(`Failed to process file: ${result.error}`)
+        setProcessingFile(false)
+      }
+    } catch (error) {
+      console.error('File processing error:', error)
+      alert('An error occurred while processing the file')
+      setProcessingFile(false)
+    }
+  }
+
+  const handleLoadIntoEditor = (document) => {
+    console.log('handleLoadIntoEditor called with document:', document)
+    console.log('Document HTML exists?', !!document.html)
+    console.log('Document HTML length:', document.html?.length)
+    console.log('Document HTML preview:', document.html?.substring(0, 100))
+    
+    if (!document.html) {
+      alert('Error: Document has no HTML content. Please re-upload the file.')
+      return
+    }
+    
+    // Store the complete document in a more reliable way
+    const docToStore = {
+      id: `uploaded-${document.id}`,
+      content: document.html,
+      status: 'draft',
+      title: document.metadata?.title || document.fileName || 'Uploaded Document',
+      metadata: document.metadata || {},
+      lastSaved: new Date().toISOString()
+    }
+    
+    // Use a specific key for this document
+    const docKey = `doc_content_${id}_uploaded-${document.id}`
+    sessionStorage.setItem(docKey, JSON.stringify(docToStore))
+    
+    // Also store in the temp location as backup
+    sessionStorage.setItem('temp_document_content', document.html)
+    sessionStorage.setItem('temp_document_metadata', JSON.stringify(document.metadata))
+    
+    // Verify it was stored
+    const stored = sessionStorage.getItem(docKey)
+    console.log('Verified document storage:', stored ? `Success in ${docKey}` : 'Failed')
+    
+    // Navigate immediately - sessionStorage is synchronous
+    navigate(`/accounts/${id}/documents/uploaded-${document.id}`)
+  }
+
+  const removeUploadedDocument = (docId) => {
+    setUploadedDocuments(prev => prev.filter(doc => doc.id !== docId))
+    
+    // Update sessionStorage
+    const storageKey = `uploaded_docs_${id}`
+    const existing = JSON.parse(sessionStorage.getItem(storageKey) || '[]')
+    sessionStorage.setItem(storageKey, JSON.stringify(existing.filter(doc => doc.id !== docId)))
+  }
+
+  // Load previously uploaded documents from sessionStorage
+  useEffect(() => {
+    const storageKey = `uploaded_docs_${id}`
+    const stored = JSON.parse(sessionStorage.getItem(storageKey) || '[]')
+    console.log('Loading uploaded documents from sessionStorage:', stored)
+    setUploadedDocuments(stored)
+  }, [id])
 
   if (loading) {
     return (
@@ -259,13 +377,79 @@ function ProspectDetailPage() {
           </div>
         </div>
 
-        {/* File Upload Section (placeholder for Milestone 5) */}
+        {/* File Upload Section */}
         <div className="glass-panel">
           <div className="px-8 py-6 border-b border-white/10">
             <h2 className="text-2xl font-light text-white">Context Files</h2>
+            <p className="text-sm text-white/50 mt-2">Upload documents to extract and edit their content</p>
           </div>
           <div className="px-8 py-8">
-            <p className="text-sm text-white/50 font-light">File upload will be implemented in Milestone 5</p>
+            <FileUploadDropzone 
+              onFileSelect={handleFileSelect}
+              maxFiles={1}
+            />
+            
+            {/* Processing Progress */}
+            {processingFile && (
+              <div className="mt-6 glass-panel p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-white/70">{processingProgress.message}</span>
+                  <span className="text-sm text-cyan-400">{Math.round(processingProgress.percent)}%</span>
+                </div>
+                <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400 transition-all duration-300"
+                    style={{ width: `${processingProgress.percent}%` }}
+                  />
+                </div>
+              </div>
+            )}
+            
+            {/* Uploaded Documents */}
+            {uploadedDocuments.length > 0 && (
+              <div className="mt-8">
+                <h3 className="text-lg font-light text-white mb-4">Processed Documents</h3>
+                <div className="space-y-3">
+                  {uploadedDocuments.map(doc => (
+                    <div 
+                      key={doc.id}
+                      className="glass-panel p-4 hover:bg-white/[0.08] transition-all"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-white">{doc.fileName}</h4>
+                          <p className="text-sm text-white/50 mt-1">
+                            Processed {new Date(doc.uploadedAt).toLocaleString()}
+                          </p>
+                          {doc.metadata?.warning && (
+                            <p className="text-sm text-yellow-400/70 mt-1">
+                              ⚠️ {doc.metadata.warning}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-2 ml-4">
+                          <button
+                            onClick={() => handleLoadIntoEditor(doc)}
+                            className="btn-volcanic text-sm px-4 py-2"
+                          >
+                            Edit in Editor
+                          </button>
+                          <button
+                            onClick={() => removeUploadedDocument(doc.id)}
+                            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                            title="Remove"
+                          >
+                            <svg className="w-5 h-5 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

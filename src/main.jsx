@@ -14,7 +14,19 @@ async function enableMocking() {
   // `worker.start()` returns a Promise that resolves
   // once the Service Worker is up and ready to intercept requests.
   return worker.start({
-    onUnhandledRequest: 'bypass',
+    onUnhandledRequest: (req) => {
+      // Bypass requests for worker files and other static assets
+      if (req.url.includes('.worker.') || req.url.includes('/node_modules/')) {
+        return 'bypass'
+      }
+      // Also bypass any non-API requests
+      if (!req.url.includes('/api/')) {
+        return 'bypass'
+      }
+      // For API requests not handled by MSW, warn
+      console.warn('Unhandled API request:', req.url)
+      return 'bypass'
+    },
   })
 }
 

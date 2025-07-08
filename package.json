@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@opendocsg/pdf2md": "^0.2.1",
     "@tailwindcss/typography": "^0.5.16",
     "@tiptap/extension-blockquote": "^2.25.0",
     "@tiptap/extension-bold": "^2.25.0",
@@ -34,8 +35,11 @@
     "docx": "^9.5.1",
     "file-saver": "^2.0.5",
     "html2pdf.js": "^0.10.3",
+    "mammoth": "^1.9.1",
+    "pdfjs-dist": "^5.3.93",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-dropzone": "^14.3.8",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.6.3",
     "react-syntax-highlighter": "^15.6.1",
