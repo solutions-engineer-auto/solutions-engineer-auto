@@ -154,6 +154,74 @@ function ProspectDetailPage() {
     console.log('Load into editor clicked for:', document)
   }
 
+  const handleDocumentFileUpload = async (files) => {
+    if (files.length === 0) return
+    
+    const file = files[0] // Process first file
+    
+    // Ask user for document title
+    const title = window.prompt('Enter a title for this document:', file.name.replace(/\.[^/.]+$/, ''))
+    if (!title) {
+      // User cancelled
+      return
+    }
+    
+    setProcessingFile(true)
+    setProcessingProgress({ percent: 0, message: `Processing ${file.name} for editing...` })
+    
+    try {
+      // Process file to HTML
+      const result = await documentProcessor.processFile(file, (percent, message) => {
+        setProcessingProgress({ percent, message })
+      })
+      
+      if (result.success) {
+        setProcessingProgress({ percent: 90, message: 'Creating document...' })
+
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error("User not authenticated")
+
+        // Create new document in documents table
+        const { data: newDoc, error } = await supabase
+          .from('documents')
+          .insert({
+            title: title,
+            content: result.html,
+            document_type: null, // As requested, null for now
+            account_id: id,
+            author_id: user.id,
+            status: 'draft'
+          })
+          .select()
+          .single()
+
+        if (error) throw error
+        
+        setProcessingProgress({ percent: 100, message: 'Document created! Redirecting...' })
+        
+        // Refresh documents list
+        await fetchAccountDetails()
+        
+        // Wait a moment for user to see success message
+        setTimeout(() => {
+          // Navigate to the document editor
+          navigate(`/accounts/${id}/documents/${newDoc.id}`)
+        }, 1000)
+        
+      } else {
+        alert(`Failed to process file: ${result.error}`)
+        setProcessingFile(false)
+        setProcessingProgress({ percent: 0, message: '' })
+      }
+    } catch (error) {
+      console.error('Document creation error:', error)
+      alert(`Failed to create document: ${error.message}`)
+      setProcessingFile(false)
+      setProcessingProgress({ percent: 0, message: '' })
+    }
+  }
+
   const removeUploadedDocument = async (docId) => {
     if (!window.confirm('Are you sure you want to remove this context file?')) return
 
@@ -382,6 +450,35 @@ function ProspectDetailPage() {
               </div>
             )}
           </div>
+          
+          {/* Document Upload Section */}
+          <div className="px-8 pb-8">
+            <div className="mt-6 pt-6 border-t border-white/10">
+              <h3 className="text-lg font-light text-white mb-4">Upload Document for Editing</h3>
+              <p className="text-sm text-white/50 mb-4">Upload templates or incomplete documents to edit them in the document editor</p>
+              
+              <FileUploadDropzone 
+                onFileSelect={handleDocumentFileUpload}
+                maxFiles={1}
+              />
+              
+              {/* Processing Progress for Document Upload */}
+              {processingFile && processingProgress.message.includes('for editing') && (
+                <div className="mt-6 glass-panel p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-white/70">{processingProgress.message}</span>
+                    <span className="text-sm text-cyan-400">{Math.round(processingProgress.percent)}%</span>
+                  </div>
+                  <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400 transition-all duration-300"
+                      style={{ width: `${processingProgress.percent}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* File Upload Section */}
@@ -397,7 +494,7 @@ function ProspectDetailPage() {
             />
             
             {/* Processing Progress */}
-            {processingFile && (
+            {processingFile && !processingProgress.message.includes('for editing') && (
               <div className="mt-6 glass-panel p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm text-white/70">{processingProgress.message}</span>
