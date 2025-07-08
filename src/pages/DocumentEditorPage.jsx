@@ -798,6 +798,13 @@ function DocumentEditorPage() {
         isOpen={showAIChat}
         onClose={() => setShowAIChat(false)}
         documentContent={editor?.getText() || ''}
+        onInsertToDocument={(content) => {
+          if (editor && !isFinalized) {
+            // Insert at current cursor position
+            editor.chain().focus().insertContent(content).run()
+            setIsDirty(true)
+          }
+        }}
       />
     </div>
   )

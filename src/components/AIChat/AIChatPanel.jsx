@@ -4,7 +4,7 @@ import AIMessage from './AIMessage';
 import AIActivityIndicator from './AIActivityIndicator';
 import AIChatInput from './AIChatInput';
 
-const AIChatPanel = ({ isOpen, onClose, documentContent }) => {
+const AIChatPanel = ({ isOpen, onClose, documentContent, onInsertToDocument }) => {
   const messagesEndRef = useRef(null);
   const [isMinimized, setIsMinimized] = useState(false);
   const [panelWidth, setPanelWidth] = useState(400);
@@ -144,7 +144,11 @@ const AIChatPanel = ({ isOpen, onClose, documentContent }) => {
             )}
             
             {messages.map((message) => (
-              <AIMessage key={message.id} message={message} />
+              <AIMessage 
+                key={message.id} 
+                message={message} 
+                onInsertToDocument={onInsertToDocument}
+              />
             ))}
             
             {currentActivity && <AIActivityIndicator activity={currentActivity} />}
@@ -157,6 +161,7 @@ const AIChatPanel = ({ isOpen, onClose, documentContent }) => {
                   timestamp: new Date()
                 }} 
                 isStreaming={true}
+                onInsertToDocument={onInsertToDocument}
               />
             )}
             
