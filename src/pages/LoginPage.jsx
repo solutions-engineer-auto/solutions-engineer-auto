@@ -1,16 +1,50 @@
-import { useNavigate } from 'react-router-dom'
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
 
 function LoginPage() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handleDemoLogin = () => {
-    // Store a demo user ID in localStorage
-    const demoUserId = 'demo-engineer-001'
-    localStorage.setItem('userId', demoUserId)
-    
-    // Redirect to accounts dashboard
-    navigate('/accounts')
-  }
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
+      navigate('/accounts');
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignUp = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+      if (error) throw error;
+      // You might want to show a message to check email for confirmation
+      alert('Sign up successful! Please check your email for a confirmation link.');
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -21,7 +55,7 @@ function LoginPage() {
       </div>
       
       {/* Login Card */}
-      <div className="relative glass-panel glass-panel-hover p-10 w-full max-w-md shadow-xl shadow-blue-500/20">
+      <div className="relative glass-panel p-10 w-full max-w-md shadow-xl shadow-blue-500/20">
         {/* Logo/Title Section */}
         <div className="text-center mb-10">
           <div className="mb-6">
@@ -41,36 +75,54 @@ function LoginPage() {
           </p>
         </div>
         
-        {/* Login Button */}
-        <div className="space-y-6">
-          <button
-            onClick={handleDemoLogin}
-            className="w-full btn-volcanic-primary text-lg font-medium flex items-center justify-center space-x-3 group"
-          >
-            <svg className="w-5 h-5 group-hover:animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                    d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-            </svg>
-            <span>Login as Demo Engineer</span>
-          </button>
-          
-          <div className="text-center">
-            <p className="text-sm text-white/50 font-light">
-              This is a demo authentication
-            </p>
-            <p className="text-xs text-white/40 mt-1">
-              Production will use OAuth integration
-            </p>
+        {/* Login Form */}
+        <form onSubmit={handleLogin}>
+          <div className="space-y-4">
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full input-field"
+              required
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full input-field"
+              required
+            />
           </div>
-        </div>
+
+          {error && <p className="text-red-400 text-sm mt-4 text-center">{error}</p>}
+
+          <div className="space-y-4 mt-6">
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full btn-volcanic-primary text-lg font-medium flex items-center justify-center"
+            >
+              {loading ? 'Logging in...' : 'Login'}
+            </button>
+            <button
+              type="button"
+              onClick={handleSignUp}
+              disabled={loading}
+              className="w-full btn-volcanic-secondary text-lg font-medium flex items-center justify-center"
+            >
+              {loading ? 'Signing up...' : 'Sign Up'}
+            </button>
+          </div>
+        </form>
         
         {/* Decorative Elements */}
         <div className="absolute -top-px left-10 right-10 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-        {/* Decorative bottom border */}
         <div className="absolute -bottom-px left-10 right-10 h-px bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent"></div>
       </div>
     </div>
-  )
+  );
 }
 
-export default LoginPage 
+export default LoginPage; 

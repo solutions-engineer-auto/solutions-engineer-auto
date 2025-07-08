@@ -1,43 +1,54 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import AccountCard from '../components/AccountCard'
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import AccountCard from '../components/AccountCard';
+import { supabase } from '../supabaseClient';
 
 function AccountDashboard() {
-  const navigate = useNavigate()
-  const userId = localStorage.getItem('userId')
-  
-  const [accounts, setAccounts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [selectedStage, setSelectedStage] = useState('all')
+  const navigate = useNavigate();
+  const [user, setUser] = useState(null);
+  const [accounts, setAccounts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedStage, setSelectedStage] = useState('all');
 
   useEffect(() => {
-    fetchAccounts()
-  }, [])
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setUser(session.user);
+        fetchAccounts(session.user.id);
+      } else {
+        navigate('/login');
+      }
+    };
+    getSession();
+  }, [navigate]);
 
-  const fetchAccounts = async () => {
+  const fetchAccounts = async (userId) => {
+    // This will be replaced with a Supabase query in the next phase
     try {
-      const response = await fetch('/api/accounts')
-      const data = await response.json()
-      setAccounts(data.accounts)
+      const response = await fetch('/api/accounts');
+      const data = await response.json();
+      setAccounts(data.accounts);
     } catch (error) {
-      console.error('Failed to fetch accounts:', error)
+      console.error('Failed to fetch accounts:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const handleLogout = () => {
-    localStorage.removeItem('userId')
-    navigate('/login')
-  }
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/login');
+  };
 
   // Get unique stages for filter
-  const stages = ['all', ...new Set(accounts.map(acc => acc.stage))]
-  
+  const stages = ['all', ...new Set(accounts.map((acc) => acc.stage))];
+
   // Filter accounts based on selected stage
-  const filteredAccounts = selectedStage === 'all' 
-    ? accounts 
-    : accounts.filter(acc => acc.stage === selectedStage)
+  const filteredAccounts =
+    selectedStage === 'all'
+      ? accounts
+      : accounts.filter((acc) => acc.stage === selectedStage);
 
   if (loading) {
     return (
@@ -67,7 +78,7 @@ function AccountDashboard() {
                 Account Dashboard
               </h1>
               <p className="text-sm text-white/60 font-light">
-                Welcome back, <span className="text-cyan-500">{userId}</span>
+                Welcome back, <span className="text-cyan-500">{user?.email}</span>
               </p>
             </div>
             <button

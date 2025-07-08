@@ -27,11 +27,11 @@ This document outlines the phased implementation plan for building the Granola A
     *   [X] Define RLS policies to ensure users can only access their own data.
 
 3.  **Implement User Authentication**
-    *   [ ] Configure Supabase Auth (e.g., enable Email/Password provider).
-    *   [ ] **✅** Create the frontend login page UI (`src/pages/LoginPage.jsx`).
-    *   [ ] Replace the mock login logic in `LoginPage.jsx` with calls to the Supabase client for user sign-up and sign-in.
-    *   [ ] Refactor the `RequireAuth` component (`src/components/RequireAuth.jsx`) to check for a live Supabase session instead of `localStorage`.
-    *   [ ] Implement the logout functionality on the `AccountDashboard` to call the Supabase client's `signOut` method.
+    *   [X] Configure Supabase Auth (e.g., enable Email/Password provider).
+    *   [X] **✅** Create the frontend login page UI (`src/pages/LoginPage.jsx`).
+    *   [X] Replace the mock login logic in `LoginPage.jsx` with calls to the Supabase client for user sign-up and sign-in.
+    *   [X] Refactor the `RequireAuth` component (`src/components/RequireAuth.jsx`) to check for a live Supabase session instead of `localStorage`.
+    *   [X] Implement the logout functionality on the `AccountDashboard` to call the Supabase client's `signOut` method.
 
 ---
 
