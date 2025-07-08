@@ -1,23 +1,4 @@
 function AccountCard({ account, onClick }) {
-  const getStatusBadgeColor = (status) => {
-    switch (status) {
-      case 'new':
-        return 'from-cyan-500/10 to-cyan-400/10 border-cyan-400/20 backdrop-blur-sm'
-      case 'draft':
-        return 'from-cyan-500/25 to-cyan-400/25 border-cyan-400/30 backdrop-blur-sm'
-      case 'in_progress':
-        return 'from-cyan-500/40 to-blue-500/40 border-cyan-400/40'
-      case 'under_review':
-        return 'from-blue-500/60 to-blue-600/60 border-blue-400/50'
-      case 'ready_for_review':
-        return 'from-blue-600/80 to-blue-700/80 border-blue-400/60'
-      case 'finalized':
-        return 'from-blue-600 to-cyan-500 border-cyan-400/80 shadow-[0_0_15px_rgba(6,182,212,0.4)]'
-      default:
-        return 'from-gray-600/50 to-gray-500/50 border-gray-400/30'
-    }
-  }
-
   const getStageBadgeColor = (stage) => {
     switch (stage) {
       case 'Discovery':
@@ -84,20 +65,8 @@ function AccountCard({ account, onClick }) {
           </div>
         </div>
 
-        {/* Document Status */}
+        {/* Last Updated */}
         <div className="border-t border-white/10 pt-4">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm text-white/60 font-light">Document Status</span>
-            {account.documentStatus || account.document_status ? (
-              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium 
-                             bg-gradient-to-r ${getStatusBadgeColor(account.documentStatus || account.document_status)} 
-                             backdrop-blur-sm border text-white shadow-sm`}>
-                {account.documentStatus || account.document_status}
-              </span>
-            ) : (
-              <span className="text-xs text-white/40 italic">No document</span>
-            )}
-          </div>
           <div className="text-xs text-white/50 font-light">
             Last updated: {formatDate(account.lastUpdated || account.last_updated || account.created_at)}
           </div>

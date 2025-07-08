@@ -9,7 +9,6 @@ This checklist covers testing the new editable fields (contact, value, stage) fo
   - value (VARCHAR, default: '$0')
   - stage (VARCHAR, default: 'Discovery')
   - description (TEXT)
-  - document_status (VARCHAR, default: 'new')
   - last_updated (TIMESTAMPTZ)
 
 ## Account Dashboard View
@@ -60,7 +59,6 @@ This checklist covers testing the new editable fields (contact, value, stage) fo
   - Contact: "Not specified"
   - Value: "$0"
   - Stage: "Discovery"
-  - Document Status: "new"
 
 ## Stage Badge Colors
 - [ ] Verify stage badges show correct colors:

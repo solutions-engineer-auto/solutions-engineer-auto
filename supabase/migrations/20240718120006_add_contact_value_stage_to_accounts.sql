@@ -4,7 +4,6 @@ ADD COLUMN contact VARCHAR,
 ADD COLUMN value VARCHAR DEFAULT '$0',
 ADD COLUMN stage VARCHAR DEFAULT 'Discovery',
 ADD COLUMN description TEXT,
-ADD COLUMN document_status VARCHAR DEFAULT 'new',
 ADD COLUMN last_updated TIMESTAMPTZ DEFAULT NOW();
 
 -- Create trigger to update last_updated timestamp
@@ -27,6 +26,5 @@ SET
   contact = 'Not specified',
   value = '$0',
   stage = 'Discovery',
-  document_status = 'new',
   last_updated = NOW()
 WHERE contact IS NULL; 

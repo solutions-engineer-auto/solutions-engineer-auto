@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AccountCard from '../components/AccountCard';
+import AccountCreationModal from '../components/AccountCreationModal';
 import { supabase } from '../supabaseClient';
 
 function AccountDashboard() {
@@ -9,6 +10,8 @@ function AccountDashboard() {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedStage, setSelectedStage] = useState('all');
+  const [showAccountModal, setShowAccountModal] = useState(false);
+  const [creatingAccount, setCreatingAccount] = useState(false);
 
   useEffect(() => {
     const getSession = async () => {
@@ -40,34 +43,35 @@ function AccountDashboard() {
     }
   };
 
-  const handleCreateAccount = async () => {
-    const name = window.prompt('Enter new account name:');
-    if (name && user) {
-      try {
-        const { data, error } = await supabase
-          .from('accounts')
-          .insert([{ 
-            name: name, 
-            owner_id: user.id,
-            contact: 'Not specified',
-            value: '$0',
-            stage: 'Discovery',
-            description: '',
-            document_status: 'new'
-          }])
-          .select();
+  const handleCreateAccount = async (accountData) => {
+    if (!user) return;
+    
+    setCreatingAccount(true);
+    try {
+      const { data, error } = await supabase
+        .from('accounts')
+        .insert([{ 
+          ...accountData,
+          owner_id: user.id
+        }])
+        .select();
 
-        if (error) {
-          throw error;
-        }
-
-        if (data) {
-          setAccounts(prevAccounts => [...prevAccounts, ...data]);
-        }
-      } catch (error) {
-        console.error('Error creating account:', error.message);
-        alert('Failed to create account.');
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
       }
+
+      if (data) {
+        setAccounts(prevAccounts => [...prevAccounts, ...data]);
+        setShowAccountModal(false);
+      }
+    } catch (error) {
+      console.error('Error creating account:', error);
+      // Show more detailed error message
+      const errorMessage = error.message || 'Failed to create account.';
+      alert(`Failed to create account: ${errorMessage}`);
+    } finally {
+      setCreatingAccount(false);
     }
   };
 
@@ -118,7 +122,7 @@ function AccountDashboard() {
             </div>
             <div className="flex items-center space-x-4">
               <button
-                onClick={handleCreateAccount}
+                onClick={() => setShowAccountModal(true)}
                 className="btn-volcanic-primary"
               >
                 New Account
@@ -182,6 +186,14 @@ function AccountDashboard() {
           </div>
         )}
       </div>
+      
+      {/* Account Creation Modal */}
+      <AccountCreationModal
+        isOpen={showAccountModal}
+        onClose={() => setShowAccountModal(false)}
+        onConfirm={handleCreateAccount}
+        isLoading={creatingAccount}
+      />
     </div>
   )
 }
