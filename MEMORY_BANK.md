@@ -8,6 +8,9 @@
 3. **Tailwind CSS not loading?** → Check if using v4 - syntax is different! [[memory:2534718]]
 4. **TipTap duplicate extension error?** → Disable in StarterKit config [[memory:2528434]]
 5. **Lists bullets offset?** → Use `list-style-position: outside` with proper padding
+6. **DOCX export failing?** → Don't use `html-docx-js` - use modern `docx` library [[memory:2538911]]
+7. **PDF export missing headings?** → Strip dark theme color classes & force black text [[memory:2539981]]
+8. **PDF list numbers offset?** → Remove Tailwind margin classes & set explicit styles [[memory:2541362]]
 
 ## Project Setup ✅
 
@@ -314,6 +317,137 @@
 - **Dependencies Added**:
   - `react-markdown` for markdown rendering
   - `react-syntax-highlighter` for code syntax highlighting
+- **Files Created**:
+  - `src/components/AIChat/AIChatPanel.jsx` - Main chat container with resize/minimize
+  - `src/components/AIChat/AIMessage.jsx` - Message rendering with markdown support
+  - `src/components/AIChat/AIActivityIndicator.jsx` - AI activity state indicators
+  - `src/components/AIChat/AIChatInput.jsx` - Chat input with auto-resize
+  - `src/components/AIChat/useAIChat.js` - Hook managing chat state and streaming
+- **Integration Points**:
+  - Toggle button added to document editor header
+  - Keyboard shortcut handler in document editor
+  - CSS animations and responsive layout adjustments
+
+### Document Export Functionality (COMPLETED)
+- **Date**: December 2024
+- **Status**: ✅ Complete
+- **Features Implemented**:
+  - Multi-format export support (PDF, DOCX, Markdown, HTML, Plain Text)
+  - Enhanced export modal with format selection UI
+  - Format-specific options:
+    - PDF/DOCX: Page size, orientation, margins, font size
+    - All formats: Document metadata (title, author, dates)
+  - Preview functionality for all formats except DOCX
+  - File size estimation before export
+  - Client-side processing for privacy and speed
+  - Progress indicators during export
+  - Comprehensive error handling and validation
+- **Technical Architecture**:
+  - Modular service architecture in `src/services/`
+  - Format-specific exporters with shared interface
+  - Main coordinator service handles format routing
+  - Beautiful glassmorphic modal UI component
+- **Libraries Used**:
+  - `html2pdf.js` - PDF generation with styling
+  - ~~`html-docx-js`~~ - **REPLACED with `docx`** due to ESM compatibility [[memory:2538911]]
+  - `turndown` - HTML to Markdown conversion
+  - `file-saver` - Cross-browser file downloads
+- **Export Options**:
+  - Customizable filename
+  - Document metadata embedding
+  - Page setup (size, orientation, margins)
+  - Font settings
+  - Format-specific optimizations
+- **Critical Fix**: DOCX Export Library Issue [[memory:2538911]]
+  - **Problem**: `html-docx-js` uses deprecated `with` statement incompatible with ESM
+  - **Error**: "With statements cannot be used with the 'esm' output format due to strict mode"
+  - **Solution**: Replaced with modern `docx` library which is ESM-compatible
+  - **Implementation**: Custom DOCX exporter that converts HTML to docx format programmatically
+
+### Document Status Management Enhancement (COMPLETED)
+- **Date**: December 2024
+- **Status**: ✅ Complete
+- **Changes Made**:
+  - **Export Always Available**: Removed restriction requiring documents to be finalized before export
+  - **Status Dropdown**: Replaced "Finalize Document" button with dropdown selector
+  - **Available Statuses**:
+    - New (gray badge)
+    - Draft (blue badge)
+    - In Progress (purple badge)
+    - Under Review (yellow badge)
+    - Ready for Review (orange badge)
+    - Finalized (green badge)
+  - **Status Behavior**:
+    - Finalized documents become read-only
+    - Other statuses keep document editable
+    - Confirmation required when changing to "finalized"
+  - **UI Improvements**:
+    - Glassmorphic dropdown matching theme
+    - Status badge colors consistent throughout app
+    - Dropdown disabled when document is finalized
+- **Technical Details**:
+  - `handleStatusChange` function replaces `handleFinalize`
+  - Status dropdown uses native select with custom styling
+  - Export button no longer has `disabled={!isFinalized}` condition
+
+### PDF Export Headings Fix (COMPLETED)
+- **Date**: December 2024  
+- **Status**: ✅ Complete
+- **Issue**: Headings and text not appearing in PDF exports [[memory:2539981]]
+- **Root Cause**: TipTap editor configured with `text-white` classes for dark theme
+- **Solution**:
+  - Added HTML preprocessing to strip all theme color classes
+  - Force black text color with `!important` in PDF CSS
+  - Added catch-all rule `* { color: #000 !important; }`
+  - Preserved link colors separately
+- **Technical Implementation**:
+  - Modified `prepareHTMLForPDF()` function to remove color classes
+  - Updated PDF CSS with explicit black color rules
+  - All text now visible on white PDF background
+- **Additional Fixes**:
+  - Fixed preview white-on-white text by adding same preprocessing to `generatePrintPreview()`
+  - Fixed list number offset in PDFs by:
+    - Adding `list-style-position: outside` CSS rule
+    - Removing Tailwind margin classes (`ml-*`) during preprocessing
+    - Setting explicit inline styles on list elements
+    - Overriding TipTap's `.list-disc` and `.list-decimal` classes
+  - Added explicit `list-style-type` for ordered and unordered lists
+
+## Session Summary - December 2024
+
+### Major Features Implemented:
+1. **Cursor-like AI Chat Panel**:
+   - Resizable side panel with glassmorphic UI
+   - Streaming responses with activity indicators
+   - Markdown support with syntax highlighting
+   - Keyboard shortcut (Cmd/Ctrl+Shift+L)
+   - Modular architecture with custom hook
+
+2. **Comprehensive Document Export System**:
+   - Multi-format support (PDF, DOCX, Markdown, HTML, Plain Text)
+   - Beautiful export modal with format selection
+   - Customizable options (page size, margins, metadata)
+   - Preview functionality for all formats except DOCX
+   - Client-side processing for privacy
+
+3. **Document Status Management**:
+   - Replaced finalize button with status dropdown
+   - Six status options (new, draft, in progress, under review, ready for review, finalized)
+   - Export available at any status (not just finalized)
+   - Read-only mode for finalized documents
+
+### Technical Challenges Solved:
+- **DOCX Library Compatibility**: Replaced `html-docx-js` with modern `docx` library due to ESM issues
+- **PDF White-on-White Text**: Fixed by stripping dark theme color classes
+- **PDF List Number Offset**: Complex fix involving CSS overrides and Tailwind class removal
+- **Tailwind v4 Compatibility**: Documented differences from v3
+
+### Architecture Highlights:
+- Modular service architecture for exports
+- Clean separation of concerns
+- Reusable components following project patterns
+- Comprehensive error handling
+- Memory bank documentation for future reference
 
 ## Next Steps
 - Milestone 5: File Upload Interface

@@ -663,4 +663,16 @@
       margin-right: 420px;
     }
   }
+
+  /* Custom Select Dropdown Styles */
+  select option {
+    background-color: #0A0F1E;
+    color: rgba(255, 255, 255, 0.9);
+    padding: 8px;
+  }
+
+  select:focus {
+    outline: none;
+    border-color: rgba(251, 146, 60, 0.5);
+  }
 }

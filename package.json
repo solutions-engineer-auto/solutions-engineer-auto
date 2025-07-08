@@ -31,11 +31,15 @@
     "@tiptap/pm": "^2.25.0",
     "@tiptap/react": "^2.25.0",
     "@tiptap/starter-kit": "^2.25.0",
+    "docx": "^9.5.1",
+    "file-saver": "^2.0.5",
+    "html2pdf.js": "^0.10.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.6.3",
     "react-syntax-highlighter": "^15.6.1",
+    "turndown": "^7.2.0",
     "zustand": "^5.0.6"
   },
   "devDependencies": {

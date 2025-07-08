@@ -10,6 +10,7 @@ import Placeholder from '@tiptap/extension-placeholder'
 import TextAlign from '@tiptap/extension-text-align'
 import TextStyle from '@tiptap/extension-text-style'
 import AIChatPanel from '../components/AIChat/AIChatPanel'
+import ExportModal from '../components/ExportModal'
 
 function DocumentEditorPage() {
   const { accountId, docId } = useParams()
@@ -102,16 +103,13 @@ function DocumentEditorPage() {
   useEffect(() => {
     const fetchDocument = async () => {
       try {
-        console.log('Fetching document with ID:', docId)
         const response = await fetch(`/api/documents/${docId}`)
-        console.log('Response status:', response.status)
         
         if (!response.ok) {
           throw new Error(`Document fetch failed with status: ${response.status}`)
         }
         
         const data = await response.json()
-        console.log('Document data received:', data)
         
         setDocumentData(data)
         setInitialContent(data.content || '')
@@ -123,10 +121,8 @@ function DocumentEditorPage() {
         }
       } catch (error) {
         console.error('Failed to fetch document:', error)
-        console.error('Document ID was:', docId)
         alert(`Failed to load document: ${error.message}`)
-        // Temporarily comment out navigation to see the error
-        // navigate(`/accounts/${accountId}`)
+        navigate(`/accounts/${accountId}`)
       } finally {
         setLoading(false)
       }
@@ -212,8 +208,8 @@ function DocumentEditorPage() {
     }
   }, [editor, handleSave, setShowAIModal, setSelectedText, setShowAIChat])
 
-  const handleFinalize = async () => {
-    if (!confirm('Are you sure you want to finalize this document? This action cannot be undone.')) {
+  const handleStatusChange = async (newStatus) => {
+    if (newStatus === 'finalized' && !confirm('Are you sure you want to finalize this document? This action cannot be undone.')) {
       return
     }
 
@@ -225,40 +221,40 @@ function DocumentEditorPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           content: editor.getHTML(),
-          status: 'finalized'
+          status: newStatus
         })
       })
       
-      if (!response.ok) throw new Error('Failed to finalize')
+      if (!response.ok) throw new Error('Failed to update status')
       
-      setDocumentData({ ...documentData, status: 'finalized' })
+      setDocumentData({ ...documentData, status: newStatus })
       setIsDirty(false)
-      editor.setEditable(false)
+      
+      // Make document read-only if finalized
+      if (newStatus === 'finalized') {
+        editor.setEditable(false)
+      } else {
+        editor.setEditable(true)
+      }
     } catch (error) {
-      console.error('Finalize failed:', error)
-      alert('Failed to finalize document')
+      console.error('Status update failed:', error)
+      alert('Failed to update document status')
     }
   }
 
-  const handleExport = async (format) => {
-    try {
-      const response = await fetch(`/api/documents/${docId}/export`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ format })
-      })
-      
-      if (!response.ok) throw new Error('Export failed')
-      
-      const data = await response.json()
-      // TODO: Implement actual download when backend is ready
-      alert(`Export functionality ready - Backend will provide download at: ${data.downloadUrl}`)
-      setShowExportModal(false)
-    } catch (error) {
-      console.error('Export failed:', error)
-      alert('Failed to export document')
-    }
-  }
+  // Available document statuses
+  const documentStatuses = [
+    { value: 'new', label: 'New', color: 'bg-gray-500/20 text-gray-400' },
+    { value: 'draft', label: 'Draft', color: 'bg-blue-500/20 text-blue-400' },
+    { value: 'in_progress', label: 'In Progress', color: 'bg-purple-500/20 text-purple-400' },
+    { value: 'under_review', label: 'Under Review', color: 'bg-yellow-500/20 text-yellow-400' },
+    { value: 'ready_for_review', label: 'Ready for Review', color: 'bg-orange-500/20 text-orange-400' },
+    { value: 'finalized', label: 'Finalized', color: 'bg-green-500/20 text-green-400' }
+  ]
+  
+  const currentStatusInfo = documentStatuses.find(s => s.value === documentData?.status) || documentStatuses[1]
+
+
 
   const ToolbarButton = ({ onClick, isActive, children, title, disabled }) => {
     const handleClick = (e) => {
@@ -328,14 +324,8 @@ function DocumentEditorPage() {
               </button>
               
               {/* Status Badge */}
-              <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                documentData?.status === 'finalized' 
-                  ? 'bg-green-500/20 text-green-400'
-                  : documentData?.status === 'ready_for_review'
-                  ? 'bg-yellow-500/20 text-yellow-400'
-                  : 'bg-blue-500/20 text-blue-400'
-              }`}>
-                {documentData?.status || 'draft'}
+              <div className={`px-3 py-1 rounded-full text-sm font-medium ${currentStatusInfo.color}`}>
+                {currentStatusInfo.label}
               </div>
               
               {/* Save Status */}
@@ -565,30 +555,39 @@ function DocumentEditorPage() {
         {/* Action Buttons */}
         <div className="flex items-center justify-between mt-8">
           <div className="flex items-center space-x-4">
-            {!isFinalized && (
-              <>
-                <button
-                  onClick={handleSave}
-                  disabled={!isDirty || saving}
-                  className="btn-volcanic-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </button>
-                
-                <button
-                  onClick={handleFinalize}
-                  className="btn-volcanic"
-                >
-                  Finalize Document
-                </button>
-              </>
-            )}
+            <button
+              onClick={handleSave}
+              disabled={!isDirty || saving || isFinalized}
+              className="btn-volcanic-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+            
+            {/* Status Dropdown */}
+            <div className="relative">
+              <select
+                value={documentData?.status || 'draft'}
+                onChange={(e) => handleStatusChange(e.target.value)}
+                disabled={isFinalized}
+                className="appearance-none bg-white/[0.08] backdrop-blur-md border border-white/[0.15] rounded-lg text-white/90 hover:bg-white/[0.12] hover:border-orange-500/50 transition-all duration-300 px-4 py-2 pr-10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {documentStatuses.map(status => (
+                  <option key={status.value} value={status.value} className="bg-[#0A0F1E]">
+                    {status.label}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                <svg className="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
           </div>
           
           <button
             onClick={() => setShowExportModal(true)}
-            disabled={!isFinalized}
-            className="btn-volcanic disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-volcanic"
           >
             Export Document
           </button>
@@ -596,35 +595,12 @@ function DocumentEditorPage() {
       </div>
 
       {/* Export Modal */}
-      {showExportModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="glass-panel p-8 max-w-md w-full mx-4">
-            <h2 className="text-2xl font-light text-white mb-6">Export Document</h2>
-            <p className="text-white/70 mb-6">Choose your export format:</p>
-            
-            <div className="space-y-3">
-              <button
-                onClick={() => handleExport('pdf')}
-                className="w-full btn-volcanic-primary"
-              >
-                Export as PDF
-              </button>
-              <button
-                onClick={() => handleExport('docx')}
-                className="w-full btn-volcanic-primary"
-              >
-                Export as DOCX
-              </button>
-              <button
-                onClick={() => setShowExportModal(false)}
-                className="w-full btn-volcanic"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ExportModal 
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        editor={editor}
+        documentData={documentData}
+      />
 
       {/* AI Regeneration Modal */}
       {showAIModal && (
