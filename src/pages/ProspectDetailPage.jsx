@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import FileUploadDropzone from '../components/FileUploadDropzone'
 import documentProcessor from '../services/documentProcessor'
+import TemplateSelectionModal from '../components/TemplateSelectionModal'
+import DocumentCreationModal from '../components/DocumentCreationModal'
 
 function ProspectDetailPage() {
   const { id } = useParams()
@@ -14,6 +16,8 @@ function ProspectDetailPage() {
   const [dataSources, setDataSources] = useState([])
   const [processingFile, setProcessingFile] = useState(false)
   const [processingProgress, setProcessingProgress] = useState({ percent: 0, message: '' })
+  const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [showDocumentModal, setShowDocumentModal] = useState(false)
 
   const fetchAccountDetails = async () => {
     try {
@@ -69,16 +73,14 @@ function ProspectDetailPage() {
 
 
   const handleGenerateDocument = async () => {
-    const title = window.prompt('Enter new document title:');
-    if (!title) {
-      // User cancelled or entered an empty title
-      return;
-    }
+    setShowDocumentModal(true)
+  }
 
+  const handleCreateDocument = async (title) => {
     setGenerating(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error("User not authenticated")
 
       const { data: newDoc, error } = await supabase
         .from('documents')
@@ -88,15 +90,16 @@ function ProspectDetailPage() {
           author_id: user.id,
         })
         .select()
-        .single();
+        .single()
 
-      if (error) throw error;
+      if (error) throw error
       
-      // Navigate to the new document's editor page
-      navigate(`/accounts/${id}/documents/${newDoc.id}`);
+      // Close modal and navigate to the new document's editor page
+      setShowDocumentModal(false)
+      navigate(`/accounts/${id}/documents/${newDoc.id}`)
     } catch (error) {
-      console.error('Failed to generate document:', error);
-      alert('Failed to generate document. Please try again.');
+      console.error('Failed to generate document:', error)
+      alert('Failed to generate document. Please try again.')
     } finally {
       setGenerating(false)
     }
@@ -222,6 +225,36 @@ function ProspectDetailPage() {
     }
   }
 
+  const handleCreateFromTemplate = async (template, title) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error("User not authenticated")
+
+      // Create new document from template
+      const { data: newDoc, error } = await supabase
+        .from('documents')
+        .insert({
+          title: title,
+          content: template.content, // Copy template content
+          document_type: null,
+          account_id: id,
+          author_id: user.id,
+          status: 'draft'
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      
+      // Close modal and navigate to editor
+      setShowTemplateModal(false)
+      navigate(`/accounts/${id}/documents/${newDoc.id}`)
+      
+    } catch (error) {
+      console.error('Failed to create document from template:', error)
+      alert(`Failed to create document from template: ${error.message}`)
+    }
+  }
 
 
   const deleteDocument = async (docId, e) => {
@@ -294,7 +327,7 @@ function ProspectDetailPage() {
       successMessage.innerHTML = `
         <div class="flex items-center space-x-2">
           <svg class="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            <path strokeLinecap="round" strokeLinejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
           </svg>
           <span class="text-white">Reference file removed successfully</span>
         </div>
@@ -378,6 +411,11 @@ function ProspectDetailPage() {
     }
   }
 
+  // Filter templates from data sources
+  const templates = dataSources.filter(source => 
+    source.file_name && source.file_name.toUpperCase().includes('TEMPLATE')
+  )
+
   return (
     <div className="min-h-screen relative">
       {/* Background decoration */}
@@ -439,26 +477,45 @@ function ProspectDetailPage() {
         <div className="glass-panel mb-8">
           <div className="px-8 py-6 border-b border-white/10 flex justify-between items-center">
             <h2 className="text-2xl font-light text-white">Documents</h2>
-            <button
-              onClick={handleGenerateDocument}
-              disabled={generating}
-              className="btn-volcanic-primary inline-flex items-center space-x-2 text-sm"
-            >
-              {generating ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
-                  <span>Generating...</span>
-                </>
-              ) : (
-                <>
+            <div className="flex items-center space-x-3">
+              {/* Template Button - Show only if templates exist */}
+              {templates.length > 0 && (
+                <button
+                  onClick={() => setShowTemplateModal(true)}
+                  className="btn-volcanic inline-flex items-center space-x-2 text-sm relative"
+                >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                          d="M12 4v16m8-8H4" />
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <span>Generate New Document</span>
-                </>
+                  <span>Create from Template</span>
+                  {/* Template count badge */}
+                  <span className="absolute -top-2 -right-2 bg-cyan-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+                    {templates.length}
+                  </span>
+                </button>
               )}
-            </button>
+              <button
+                onClick={handleGenerateDocument}
+                disabled={generating}
+                className="btn-volcanic-primary inline-flex items-center space-x-2 text-sm"
+              >
+                {generating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+                    <span>Generating...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                            d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Generate New Document</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
           <div className="px-8 py-8">
             {account.documents && account.documents.length > 0 ? (
@@ -640,6 +697,22 @@ function ProspectDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Template Selection Modal */}
+      <TemplateSelectionModal
+        isOpen={showTemplateModal}
+        onClose={() => setShowTemplateModal(false)}
+        templates={templates}
+        onConfirm={handleCreateFromTemplate}
+      />
+
+      {/* Document Creation Modal */}
+      <DocumentCreationModal
+        isOpen={showDocumentModal}
+        onClose={() => setShowDocumentModal(false)}
+        onConfirm={handleCreateDocument}
+        isLoading={generating}
+      />
     </div>
   )
 }
