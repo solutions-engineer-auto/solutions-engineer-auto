@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import LoginPage from './pages/LoginPage'
 import AccountDashboard from './pages/AccountDashboard'
 import ProspectDetailPage from './pages/ProspectDetailPage'
+import DocumentEditorPage from './pages/DocumentEditorPage'
 import RequireAuth from './components/RequireAuth'
 
 function App() {
@@ -22,6 +23,12 @@ function App() {
           <Route path="/accounts/:id" element={
             <RequireAuth>
               <ProspectDetailPage />
+            </RequireAuth>
+          } />
+          
+          <Route path="/accounts/:accountId/documents/:docId" element={
+            <RequireAuth>
+              <DocumentEditorPage />
             </RequireAuth>
           } />
           

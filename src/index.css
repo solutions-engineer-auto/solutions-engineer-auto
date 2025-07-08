@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* Custom global styles */
 @layer base {
@@ -93,5 +91,99 @@
 
   .text-lava-glow {
     text-shadow: 0 0 20px rgba(255, 69, 0, 0.6);
+  }
+
+  /* TipTap Editor Styles */
+  .ProseMirror {
+    outline: none;
+  }
+  
+  /* Show paragraph boundaries on hover for better editing */
+  .ProseMirror p:hover,
+  .ProseMirror h1:hover,
+  .ProseMirror h2:hover,
+  .ProseMirror h3:hover {
+    box-shadow: inset 0 0 0 1px rgba(255, 69, 0, 0.1);
+    border-radius: 4px;
+  }
+
+  .ProseMirror p.is-editor-empty:first-child::before {
+    color: rgba(255, 255, 255, 0.3);
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
+
+  /* Prose dark mode overrides */
+  .prose-invert {
+    --tw-prose-body: rgba(255, 255, 255, 0.9);
+    --tw-prose-headings: white;
+    --tw-prose-links: #fb923c;
+    --tw-prose-bold: white;
+    --tw-prose-counters: rgba(255, 255, 255, 0.7);
+    --tw-prose-bullets: rgba(255, 255, 255, 0.5);
+    --tw-prose-hr: rgba(255, 255, 255, 0.2);
+    --tw-prose-quotes: rgba(255, 255, 255, 0.8);
+    --tw-prose-quote-borders: rgba(255, 69, 0, 0.5);
+    --tw-prose-code: #fcd34d;
+    --tw-prose-pre-code: #fcd34d;
+    --tw-prose-pre-bg: rgba(0, 0, 0, 0.4);
+  }
+
+  /* TipTap specific styles */
+  .ProseMirror h1 {
+    @apply text-4xl font-bold text-white mb-4;
+  }
+  
+  .ProseMirror h2 {
+    @apply text-3xl font-bold text-white mb-3;
+  }
+  
+  .ProseMirror h3 {
+    @apply text-2xl font-bold text-white mb-2;
+  }
+  
+  .ProseMirror p {
+    @apply mb-4 text-white/90;
+  }
+  
+  .ProseMirror ul {
+    @apply list-disc pl-6 ml-2 mb-4 text-white/90;
+    list-style-position: outside;
+  }
+  
+  .ProseMirror ol {
+    @apply list-decimal pl-6 ml-2 mb-4 text-white/90;
+    list-style-position: outside;
+  }
+  
+  .ProseMirror li {
+    @apply mb-1;
+  }
+  
+  .ProseMirror li > p {
+    @apply mb-1;
+  }
+  
+  .ProseMirror blockquote {
+    @apply border-l-4 border-orange-500/50 pl-4 my-4 italic text-white/80;
+  }
+  
+  .ProseMirror pre {
+    @apply bg-black/40 text-orange-300 p-4 rounded-lg font-mono text-sm mb-4 overflow-x-auto;
+  }
+  
+  /* Text alignment */
+  .ProseMirror [style*="text-align: center"] {
+    text-align: center;
+  }
+  
+  .ProseMirror [style*="text-align: right"] {
+    text-align: right;
+  }
+  
+  .ProseMirror [style*="text-align: justify"] {
+    text-align: justify;
   }
 }

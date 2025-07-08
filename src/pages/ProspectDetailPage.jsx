@@ -46,12 +46,8 @@ function ProspectDetailPage() {
       
       const data = await response.json()
       
-      // In a real app, we'd navigate to the document editor
-      // For now, we'll just show a success message
-      alert(`Document generated successfully! Document ID: ${data.documentId}`)
-      
-      // Refresh account data to show new document
-      await fetchAccountDetails()
+      // Navigate to the document editor
+      navigate(`/accounts/${id}/documents/${data.documentId}`)
     } catch (error) {
       console.error('Failed to generate document:', error)
       alert('Failed to generate document. Please try again.')
@@ -172,14 +168,38 @@ function ProspectDetailPage() {
 
         {/* Document Section */}
         <div className="glass-panel mb-8">
-          <div className="px-8 py-6 border-b border-white/10">
+          <div className="px-8 py-6 border-b border-white/10 flex justify-between items-center">
             <h2 className="text-2xl font-light text-white">Documents</h2>
+            <button
+              onClick={handleGenerateDocument}
+              disabled={generating}
+              className="btn-volcanic-primary inline-flex items-center space-x-2 text-sm"
+            >
+              {generating ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+                  <span>Generating...</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                          d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>Generate New Document</span>
+                </>
+              )}
+            </button>
           </div>
           <div className="px-8 py-8">
             {account.documents && account.documents.length > 0 ? (
               <div className="space-y-4">
                 {account.documents.map(doc => (
-                  <div key={doc.id} className="glass-panel p-6 hover:bg-white/[0.08] transition-all">
+                  <div 
+                    key={doc.id} 
+                    className="glass-panel p-6 hover:bg-white/[0.08] transition-all cursor-pointer"
+                    onClick={() => navigate(`/accounts/${id}/documents/${doc.id}`)}
+                  >
                     <div className="flex justify-between items-center">
                       <div>
                         <h3 className="font-medium text-white text-lg mb-2">{doc.type}</h3>
@@ -187,11 +207,17 @@ function ProspectDetailPage() {
                           Last modified: {new Date(doc.lastModified).toLocaleDateString()}
                         </p>
                       </div>
-                      <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium 
-                                     bg-gradient-to-r ${getStatusBadgeColor(doc.status)} 
-                                     backdrop-blur-sm border text-white shadow-sm`}>
-                        {doc.status}
-                      </span>
+                      <div className="flex items-center space-x-3">
+                        <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium 
+                                       bg-gradient-to-r ${getStatusBadgeColor(doc.status)} 
+                                       backdrop-blur-sm border text-white shadow-sm`}>
+                          {doc.status}
+                        </span>
+                        <svg className="w-5 h-5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                                d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
                     </div>
                   </div>
                 ))}

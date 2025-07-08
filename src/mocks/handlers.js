@@ -94,14 +94,101 @@ export const handlers = [
   }),
 
   // POST /documents/generate - Mock document generation
-  http.post('/api/documents/generate', async () => {
+  http.post('/api/documents/generate', async ({ request }) => {
     // Simulate AI generation delay
     await new Promise(resolve => setTimeout(resolve, 2000))
     
+    const body = await request.json()
+    const docId = `doc-${Date.now()}`
+    
     return HttpResponse.json({
-      documentId: `doc-${Date.now()}`,
+      documentId: docId,
       status: 'draft',
-      message: 'Document generated successfully'
+      message: 'Document generated successfully',
+      accountId: body.accountId
+    })
+  }),
+
+  // GET /documents/:id - Get document details
+  http.get('/api/documents/:id', ({ params }) => {
+    // Mock document content based on ID
+    const mockContent = `
+      <h1>Integration Plan for Acme Corporation</h1>
+      <p>This document outlines the comprehensive integration strategy for implementing our solution at Acme Corporation.</p>
+      
+      <h2>Executive Summary</h2>
+      <p>Acme Corporation is seeking to modernize their infrastructure with our cutting-edge integration platform. This document provides a detailed roadmap for successful implementation.</p>
+      
+      <h2>Technical Requirements</h2>
+      <ul>
+        <li>Cloud-native architecture support</li>
+        <li>RESTful API integration capabilities</li>
+        <li>Real-time data synchronization</li>
+        <li>Enterprise-grade security compliance</li>
+      </ul>
+      
+      <h2>Implementation Timeline</h2>
+      <p>The proposed implementation will span 12 weeks with the following phases:</p>
+      <ol>
+        <li><strong>Phase 1 (Weeks 1-3):</strong> Environment setup and initial configuration</li>
+        <li><strong>Phase 2 (Weeks 4-6):</strong> Core integration development</li>
+        <li><strong>Phase 3 (Weeks 7-9):</strong> Testing and quality assurance</li>
+        <li><strong>Phase 4 (Weeks 10-12):</strong> Deployment and go-live support</li>
+      </ol>
+      
+      <h2>Risk Mitigation</h2>
+      <p>Key risks have been identified and mitigation strategies developed:</p>
+      <blockquote>
+        <p>"Proper planning prevents poor performance. Our risk mitigation strategy ensures smooth implementation."</p>
+      </blockquote>
+      
+      <h2>Success Criteria</h2>
+      <p>Success will be measured by:</p>
+      <ul>
+        <li>System uptime of 99.9% or higher</li>
+        <li>Data processing latency under 100ms</li>
+        <li>Zero critical security vulnerabilities</li>
+        <li>User adoption rate exceeding 80% within 30 days</li>
+      </ul>
+    `
+    
+    return HttpResponse.json({
+      id: params.id,
+      content: mockContent,
+      status: 'draft',
+      title: 'Integration Plan',
+      lastModified: new Date().toISOString(),
+      createdAt: new Date(Date.now() - 3600000).toISOString() // 1 hour ago
+    })
+  }),
+
+  // PUT /documents/:id - Save document
+  http.put('/api/documents/:id', async ({ params, request }) => {
+    const body = await request.json()
+    
+    // Simulate save delay
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    return HttpResponse.json({
+      id: params.id,
+      status: body.status || 'draft',
+      lastModified: new Date().toISOString(),
+      message: 'Document saved successfully'
+    })
+  }),
+
+  // POST /documents/:id/export - Export document
+  http.post('/api/documents/:id/export', async ({ params, request }) => {
+    const body = await request.json()
+    
+    // Simulate export processing
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    
+    return HttpResponse.json({
+      documentId: params.id,
+      format: body.format,
+      downloadUrl: `/downloads/${params.id}.${body.format}`,
+      expiresAt: new Date(Date.now() + 3600000).toISOString() // 1 hour from now
     })
   })
 ] 
