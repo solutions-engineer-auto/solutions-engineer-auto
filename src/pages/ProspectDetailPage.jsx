@@ -18,6 +18,11 @@ function ProspectDetailPage() {
   const [processingProgress, setProcessingProgress] = useState({ percent: 0, message: '' })
   const [showTemplateModal, setShowTemplateModal] = useState(false)
   const [showDocumentModal, setShowDocumentModal] = useState(false)
+  const [isEditingAccount, setIsEditingAccount] = useState(false)
+  const [editedAccount, setEditedAccount] = useState({})
+  const [isSavingAccount, setIsSavingAccount] = useState(false)
+
+  const stageOptions = ['Discovery', 'Pre-Sales', 'Pilot Deployment', 'Post-Sale']
 
   const fetchAccountDetails = async () => {
     try {
@@ -353,6 +358,65 @@ function ProspectDetailPage() {
   //   setUploadedDocuments(stored)
   // }, [id])
 
+  const handleSaveAccountDetails = async () => {
+    setIsSavingAccount(true)
+    try {
+      const { error } = await supabase
+        .from('accounts')
+        .update({
+          contact: editedAccount.contact,
+          value: editedAccount.value,
+          stage: editedAccount.stage,
+          description: editedAccount.description
+        })
+        .eq('id', id)
+
+      if (error) throw error
+
+      // Update local state
+      setAccount({ ...account, ...editedAccount })
+      setIsEditingAccount(false)
+
+      // Show success message
+      const successMessage = document.createElement('div')
+      successMessage.className = 'fixed top-4 right-4 glass-panel p-4 bg-emerald-500/20 border-emerald-500/30 z-50'
+      successMessage.innerHTML = `
+        <div class="flex items-center space-x-2">
+          <svg class="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          <span class="text-white">Account details updated successfully</span>
+        </div>
+      `
+      document.body.appendChild(successMessage)
+      
+      setTimeout(() => {
+        successMessage.remove()
+      }, 3000)
+      
+    } catch (error) {
+      console.error('Failed to update account:', error)
+      alert(`Failed to update account: ${error.message}`)
+    } finally {
+      setIsSavingAccount(false)
+    }
+  }
+
+  const handleEditAccount = () => {
+    setEditedAccount({
+      contact: account.contact || '',
+      value: account.value || '$0',
+      stage: account.stage || 'Discovery',
+      description: account.description || ''
+    })
+    setIsEditingAccount(true)
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditingAccount(false)
+    setEditedAccount({})
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -445,29 +509,132 @@ function ProspectDetailPage() {
           <div className="relative">
             <div className="flex justify-between items-start">
               <div className="flex-1">
-                <h1 className="text-3xl font-light text-white mb-3">
-                  {account.name}
-                </h1>
-                <p className="text-white/70 mb-6 max-w-2xl">{account.description}</p>
+                <div className="flex items-center justify-between mb-3">
+                  <h1 className="text-3xl font-light text-white">
+                    {account.name}
+                  </h1>
+                  {!isEditingAccount && (
+                    <button
+                      onClick={handleEditAccount}
+                      className="btn-volcanic text-sm flex items-center space-x-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      <span>Edit Details</span>
+                    </button>
+                  )}
+                </div>
+                
+                {isEditingAccount ? (
+                  <div className="space-y-4 mb-6">
+                    <div>
+                      <label className="block text-sm font-light text-white/80 mb-2">Description</label>
+                      <textarea
+                        value={editedAccount.description}
+                        onChange={(e) => setEditedAccount({ ...editedAccount, description: e.target.value })}
+                        className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white 
+                                 placeholder-white/40 focus:bg-white/15 focus:border-cyan-400/50 
+                                 focus:outline-none transition-all resize-none"
+                        rows="3"
+                        placeholder="Add a description..."
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-white/70 mb-6 max-w-2xl">{account.description || 'No description provided'}</p>
+                )}
                 
                 <div className="flex flex-wrap items-center gap-6">
                   <div>
                     <span className="text-sm text-white/60 font-light">Stage</span>
-                    <span className={`ml-3 inline-flex items-center px-4 py-1.5 rounded-full text-sm font-medium 
-                                   bg-gradient-to-r ${getStageBadgeColor(account.stage)} 
-                                   backdrop-blur-sm border text-white shadow-sm`}>
-                      {account.stage}
-                    </span>
+                    {isEditingAccount ? (
+                      <select
+                        value={editedAccount.stage}
+                        onChange={(e) => setEditedAccount({ ...editedAccount, stage: e.target.value })}
+                        className="ml-3 px-4 py-1.5 rounded-lg bg-white/10 border border-white/20 text-white 
+                                 focus:bg-white/15 focus:border-cyan-400/50 focus:outline-none transition-all"
+                      >
+                        {stageOptions.map(stage => (
+                          <option key={stage} value={stage} className="bg-gray-900">{stage}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className={`ml-3 inline-flex items-center px-4 py-1.5 rounded-full text-sm font-medium 
+                                     bg-gradient-to-r ${getStageBadgeColor(account.stage)} 
+                                     backdrop-blur-sm border text-white shadow-sm`}>
+                        {account.stage || 'Discovery'}
+                      </span>
+                    )}
                   </div>
                   <div>
                     <span className="text-sm text-white/60 font-light">Value</span>
-                    <span className="ml-3 text-2xl font-bold bg-gradient-to-r from-cyan-500 to-cyan-400 bg-clip-text text-transparent">{account.value}</span>
+                    {isEditingAccount ? (
+                      <input
+                        type="text"
+                        value={editedAccount.value}
+                        onChange={(e) => setEditedAccount({ ...editedAccount, value: e.target.value })}
+                        className="ml-3 px-4 py-1.5 rounded-lg bg-white/10 border border-white/20 text-white 
+                                 placeholder-white/40 focus:bg-white/15 focus:border-cyan-400/50 
+                                 focus:outline-none transition-all w-32"
+                        placeholder="$0"
+                      />
+                    ) : (
+                      <span className="ml-3 text-2xl font-bold bg-gradient-to-r from-cyan-500 to-cyan-400 bg-clip-text text-transparent">
+                        {account.value || '$0'}
+                      </span>
+                    )}
                   </div>
                   <div>
                     <span className="text-sm text-white/60 font-light">Contact</span>
-                    <span className="ml-3 text-white">{account.contact}</span>
+                    {isEditingAccount ? (
+                      <input
+                        type="text"
+                        value={editedAccount.contact}
+                        onChange={(e) => setEditedAccount({ ...editedAccount, contact: e.target.value })}
+                        className="ml-3 px-4 py-1.5 rounded-lg bg-white/10 border border-white/20 text-white 
+                                 placeholder-white/40 focus:bg-white/15 focus:border-cyan-400/50 
+                                 focus:outline-none transition-all w-48"
+                        placeholder="Contact name..."
+                      />
+                    ) : (
+                      <span className="ml-3 text-white">{account.contact || 'Not specified'}</span>
+                    )}
                   </div>
                 </div>
+                
+                {isEditingAccount && (
+                  <div className="flex items-center space-x-3 mt-6">
+                    <button
+                      onClick={handleSaveAccountDetails}
+                      disabled={isSavingAccount}
+                      className="btn-volcanic-primary inline-flex items-center space-x-2"
+                    >
+                      {isSavingAccount ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+                          <span>Saving...</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                                  d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>Save Changes</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={handleCancelEdit}
+                      disabled={isSavingAccount}
+                      className="btn-volcanic"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

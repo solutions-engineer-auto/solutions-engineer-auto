@@ -46,7 +46,15 @@ function AccountDashboard() {
       try {
         const { data, error } = await supabase
           .from('accounts')
-          .insert([{ name: name, owner_id: user.id }])
+          .insert([{ 
+            name: name, 
+            owner_id: user.id,
+            contact: 'Not specified',
+            value: '$0',
+            stage: 'Discovery',
+            description: '',
+            document_status: 'new'
+          }])
           .select();
 
         if (error) {

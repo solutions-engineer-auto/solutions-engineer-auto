@@ -60,7 +60,7 @@ function AccountCard({ account, onClick }) {
           </h3>
           <p className="text-3xl font-bold bg-gradient-to-r from-cyan-500 to-cyan-400 
                        bg-clip-text text-transparent">
-            {account.value}
+            {account.value || '$0'}
           </p>
         </div>
 
@@ -71,13 +71,15 @@ function AccountCard({ account, onClick }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
                     d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
-            {account.contact}
+            <span className={account.contact ? '' : 'italic text-white/40'}>
+              {account.contact || 'No contact specified'}
+            </span>
           </div>
           <div>
             <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium 
-                           bg-gradient-to-r ${getStageBadgeColor(account.stage)} 
+                           bg-gradient-to-r ${getStageBadgeColor(account.stage || 'Discovery')} 
                            backdrop-blur-sm border text-white shadow-sm`}>
-              {account.stage}
+              {account.stage || 'Discovery'}
             </span>
           </div>
         </div>
@@ -86,18 +88,18 @@ function AccountCard({ account, onClick }) {
         <div className="border-t border-white/10 pt-4">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm text-white/60 font-light">Document Status</span>
-            {account.documentStatus ? (
+            {account.documentStatus || account.document_status ? (
               <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium 
-                             bg-gradient-to-r ${getStatusBadgeColor(account.documentStatus)} 
+                             bg-gradient-to-r ${getStatusBadgeColor(account.documentStatus || account.document_status)} 
                              backdrop-blur-sm border text-white shadow-sm`}>
-                {account.documentStatus}
+                {account.documentStatus || account.document_status}
               </span>
             ) : (
               <span className="text-xs text-white/40 italic">No document</span>
             )}
           </div>
           <div className="text-xs text-white/50 font-light">
-            Last updated: {formatDate(account.lastUpdated)}
+            Last updated: {formatDate(account.lastUpdated || account.last_updated || account.created_at)}
           </div>
         </div>
 
