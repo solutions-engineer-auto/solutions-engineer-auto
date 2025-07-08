@@ -12,6 +12,7 @@ import TextStyle from '@tiptap/extension-text-style'
 import AIChatPanel from '../components/AIChat/AIChatPanel'
 import ExportModal from '../components/ExportModal'
 import { supabase } from '../supabaseClient'
+import AgentActivity from '../components/AgentActivity'
 
 function DocumentEditorPage() {
   const { accountId, docId } = useParams()
@@ -26,6 +27,13 @@ function DocumentEditorPage() {
   const [selectedText, setSelectedText] = useState('')
   const [initialContent, setInitialContent] = useState('')
   const [showAIChat, setShowAIChat] = useState(false)
+  
+  // Agent integration states
+  const [mode, setMode] = useState('mock')
+  const [agentActivity, setAgentActivity] = useState(null)
+  const [agentThreadId, setAgentThreadId] = useState(null)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [accountData, setAccountData] = useState(null)
 
   // Initialize TipTap editor
   const editor = useEditor({
@@ -100,9 +108,9 @@ function DocumentEditorPage() {
     autofocus: 'end'
   })
 
-  // Fetch document on mount
+  // Fetch document and account data on mount
   useEffect(() => {
-    const fetchDocument = async () => {
+    const fetchData = async () => {
       setLoading(true)
       try {
         let data
@@ -153,6 +161,17 @@ function DocumentEditorPage() {
             editor.setEditable(data.status !== 'finalized')
             setIsDirty(false)
         }
+        
+        // Fetch account data
+        try {
+          const accountResponse = await fetch(`/api/accounts/${accountId}`)
+          if (accountResponse.ok) {
+            const accData = await accountResponse.json()
+            setAccountData(accData)
+          }
+        } catch (error) {
+          console.log('Could not fetch account data:', error)
+        }
       } catch (error) {
         console.error('Failed to fetch document:', error)
         alert(`Failed to load document: ${error.message}`)
@@ -163,7 +182,7 @@ function DocumentEditorPage() {
     }
 
     if(docId && accountId) {
-        fetchDocument()
+        fetchData()
     }
   }, [docId, accountId, navigate, editor])
 
@@ -310,7 +329,8 @@ function DocumentEditorPage() {
   
   const currentStatusInfo = documentStatuses.find(s => s.value === documentData?.status) || documentStatuses[1]
 
-
+  // Agent integration functions - moved to AI Chat
+  // These are kept for potential future use but currently handled by AIChatPanel
 
   const ToolbarButton = ({ onClick, isActive, children, title, disabled }) => {
     const handleClick = (e) => {
@@ -603,6 +623,7 @@ function DocumentEditorPage() {
         </div>
       )}
 
+
       {/* Editor Content */}
       <div className="max-w-7xl mx-auto px-8 py-8">
         <div className="glass-panel p-8">
@@ -715,7 +736,15 @@ function DocumentEditorPage() {
         isOpen={showAIChat}
         onClose={() => setShowAIChat(false)}
         documentContent={editor?.getText() || ''}
+        accountData={accountData}
+        mode={mode}
+        onModeChange={setMode}
+        agentThreadId={agentThreadId}
+        onThreadCreate={setAgentThreadId}
       />
+      
+      {/* Agent Activity Indicator */}
+      <AgentActivity activity={agentActivity} />
     </div>
   )
 }

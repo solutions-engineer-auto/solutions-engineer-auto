@@ -16,13 +16,17 @@ const MOCK_RESPONSES = [
   "I found the following in your project:\n\n```jsx\n<DocumentEditor\n  content={content}\n  onChange={handleChange}\n  theme=\"volcanic\"\n/>\n```\n\nThis component could benefit from memoization to prevent unnecessary re-renders."
 ];
 
-export const useAIChat = () => {
+export const useAIChat = (mode = 'mock', threadId = null, onThreadCreate = null) => {
   const [messages, setMessages] = useState([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentActivity, setCurrentActivity] = useState(null);
   const [streamingMessage, setStreamingMessage] = useState('');
-  const eventSourceRef = useRef(null);
+  const [connectionStatus, setConnectionStatus] = useState({
+    isConnected: mode === 'mock',
+    lastError: null
+  });
   const activityTimeoutRef = useRef(null);
+  const currentThreadRef = useRef(threadId);
 
   // Simulate AI activities before response
   const simulateActivities = async () => {
@@ -54,7 +58,7 @@ export const useAIChat = () => {
     return currentText;
   };
 
-  const sendMessage = useCallback(async (content) => {
+  const sendMessage = useCallback(async (content, accountData = null) => {
     if (!content.trim() || isStreaming) return;
 
     // Add user message
@@ -71,65 +75,159 @@ export const useAIChat = () => {
     setStreamingMessage('');
 
     try {
-      // Simulate AI activities
-      await simulateActivities();
-
-      // Get random response
-      const response = MOCK_RESPONSES[Math.floor(Math.random() * MOCK_RESPONSES.length)];
+      if (mode === 'agent') {
+        // Agent mode - use polling approach
+        console.log('[useAIChat] Starting agent mode (polling)');
+        
+        try {
+          // Update connection status
+          setConnectionStatus({ isConnected: false, lastError: null });
+          
+          // Step 1: Start the run
+          console.log('[useAIChat] Starting run...');
+          const startResponse = await fetch('/api/langgraph/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              prompt: content,
+              accountData: accountData || { name: 'Chat User' }
+            })
+          });
+          
+          if (!startResponse.ok) {
+            throw new Error(`Failed to start run: ${startResponse.status}`);
+          }
+          
+          const { threadId, runId, status } = await startResponse.json();
+          console.log('[useAIChat] Run started:', { threadId, runId, status });
+          
+          // Store thread ID
+          currentThreadRef.current = threadId;
+          if (onThreadCreate) {
+            onThreadCreate(threadId);
+          }
+          
+          // Connection successful
+          setConnectionStatus({ isConnected: true, lastError: null });
+          
+          // Step 2: Poll for completion
+          console.log('[useAIChat] Starting polling...');
+          let attempts = 0;
+          const maxAttempts = 60; // 60 seconds max
+          let documentContent = '';
+          
+          while (attempts < maxAttempts) {
+            const pollResponse = await fetch(`/api/langgraph/poll?threadId=${threadId}&runId=${runId}`);
+            
+            if (!pollResponse.ok) {
+              throw new Error(`Polling failed: ${pollResponse.status}`);
+            }
+            
+            const pollData = await pollResponse.json();
+            console.log('[useAIChat] Poll response:', pollData);
+            
+            // Update activity status
+            setCurrentActivity({
+              type: 'status',
+              message: `Processing... (${pollData.status})`
+            });
+            
+            if (pollData.complete) {
+              if (pollData.document) {
+                documentContent = pollData.document;
+                console.log('[useAIChat] Document received, length:', documentContent.length);
+                break;
+              } else if (pollData.error) {
+                throw new Error(pollData.error);
+              } else {
+                throw new Error('Run completed but no document generated');
+              }
+            }
+            
+            // Wait before next poll
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            attempts++;
+          }
+          
+          if (!documentContent && attempts >= maxAttempts) {
+            throw new Error('Timeout waiting for document generation');
+          }
+          
+          // Clear activity
+          setCurrentActivity(null);
+          
+          // Add the final message
+          const aiMessage = {
+            id: Date.now() + 1,
+            role: 'assistant',
+            content: documentContent,
+            timestamp: new Date()
+          };
+          console.log('[useAIChat] Adding AI message to chat');
+          setMessages(prev => [...prev, aiMessage]);
+          
+        } catch (error) {
+          console.error('[useAIChat] Agent error:', error);
+          setCurrentActivity({ type: 'error', message: error.message });
+          setConnectionStatus({ 
+            isConnected: false, 
+            lastError: error.message
+          });
+          
+          // Add error message to chat
+          const errorMessage = {
+            id: Date.now() + 1,
+            role: 'assistant',
+            content: `Error: ${error.message}`,
+            timestamp: new Date(),
+            isError: true
+          };
+          setMessages(prev => [...prev, errorMessage]);
+        }
+      } else {
+        // Mock mode - keep existing behavior
+        await simulateActivities();
+        const response = MOCK_RESPONSES[Math.floor(Math.random() * MOCK_RESPONSES.length)];
+        const fullResponse = await simulateStreaming(response);
+        
+        const aiMessage = {
+          id: Date.now() + 1,
+          role: 'assistant',
+          content: fullResponse,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, aiMessage]);
+      }
       
-      // Simulate streaming
-      const fullResponse = await simulateStreaming(response);
-
-      // Add AI message
-      const aiMessage = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: fullResponse,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, aiMessage]);
       setStreamingMessage('');
     } catch (error) {
       console.error('Chat error:', error);
-      setCurrentActivity({ type: 'error', message: 'Something went wrong...' });
+      setCurrentActivity({ type: 'error', message: error.message || 'Something went wrong...' });
+      
+      // Update connection status with error
+      setConnectionStatus({ 
+        isConnected: false, 
+        lastError: error.message || 'Connection failed'
+      });
+      
+      // Add error message to chat
+      const errorMessage = {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: `Error: ${error.message}`,
+        timestamp: new Date(),
+        isError: true
+      };
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsStreaming(false);
+      setTimeout(() => setCurrentActivity(null), 3000);
     }
-  }, [isStreaming]);
-
-  // Connect to real SSE endpoint (for future use)
-  const connectToStream = useCallback((endpoint) => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
-
-    eventSourceRef.current = new EventSource(endpoint);
-    
-    eventSourceRef.current.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      
-      if (data.type === 'activity') {
-        setCurrentActivity(data.activity);
-      } else if (data.type === 'token') {
-        setStreamingMessage(prev => prev + data.token);
-      } else if (data.type === 'done') {
-        setIsStreaming(false);
-        setCurrentActivity(null);
-      }
-    };
-
-    eventSourceRef.current.onerror = () => {
-      setIsStreaming(false);
-      setCurrentActivity({ type: 'error', message: 'Connection lost' });
-    };
-  }, []);
+  }, [isStreaming, mode, onThreadCreate]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
       if (activityTimeoutRef.current) {
         clearTimeout(activityTimeoutRef.current);
       }
@@ -149,6 +247,7 @@ export const useAIChat = () => {
     streamingMessage,
     sendMessage,
     clearMessages,
-    connectToStream
+    currentThread: currentThreadRef.current,
+    connectionStatus
   };
 }; 

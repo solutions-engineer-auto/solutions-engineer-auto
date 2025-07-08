@@ -19,6 +19,10 @@ async function enableMocking() {
       if (req.url.includes('.worker.') || req.url.includes('/node_modules/')) {
         return 'bypass'
       }
+      // Bypass all /api/langgraph requests (handled by Vite proxy)
+      if (req.url.includes('/api/langgraph')) {
+        return 'bypass'
+      }
       // Also bypass any non-API requests
       if (!req.url.includes('/api/')) {
         return 'bypass'
