@@ -133,7 +133,7 @@ function ExportModal({ isOpen, onClose, editor, documentData }) {
                 onClick={() => setSelectedFormat(format)}
                 className={`p-4 rounded-xl border transition-all duration-200 ${
                   selectedFormat === format
-                    ? 'bg-cyan-500/20 border-cyan-500/50 text-white shadow-[0_0_15px_rgba(6,182,212,0.3)]'
+                    ? 'bg-cyan-500/20 border-cyan-500/50 text-white'
                     : 'bg-white/[0.05] border-white/10 hover:bg-white/[0.08] hover:border-white/20 text-white/80 hover:text-white'
                 }`}
               >
@@ -159,7 +159,7 @@ function ExportModal({ isOpen, onClose, editor, documentData }) {
               type="text"
               value={exportOptions.filename}
               onChange={(e) => updateOption('filename', e.target.value)}
-              className="w-full px-4 py-2 bg-black/40 text-white rounded-lg border border-white/10 focus:border-cyan-500/50 focus:shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-colors outline-none"
+              className="w-full px-4 py-2 bg-black/40 text-white rounded-lg border border-white/10 focus:border-cyan-500/50 transition-colors outline-none"
               placeholder="Enter file name"
             />
           </div>
@@ -174,7 +174,7 @@ function ExportModal({ isOpen, onClose, editor, documentData }) {
                   type="text"
                   value={exportOptions.metadata.title}
                   onChange={(e) => updateOption('metadata.title', e.target.value)}
-                  className="w-full px-3 py-1.5 bg-black/40 text-white text-sm rounded border border-white/10 focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-colors outline-none"
+                  className="w-full px-3 py-1.5 bg-black/40 text-white text-sm rounded border border-white/10 focus:border-cyan-500/50 transition-colors outline-none"
                 />
               </div>
               <div>
@@ -183,7 +183,7 @@ function ExportModal({ isOpen, onClose, editor, documentData }) {
                   type="text"
                   value={exportOptions.metadata.author}
                   onChange={(e) => updateOption('metadata.author', e.target.value)}
-                  className="w-full px-3 py-1.5 bg-black/40 text-white text-sm rounded border border-white/10 focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-colors outline-none"
+                  className="w-full px-3 py-1.5 bg-black/40 text-white text-sm rounded border border-white/10 focus:border-cyan-500/50 transition-colors outline-none"
                 />
               </div>
             </div>
@@ -199,7 +199,7 @@ function ExportModal({ isOpen, onClose, editor, documentData }) {
                   <select
                     value={exportOptions.styling.pageSize}
                     onChange={(e) => updateOption('styling.pageSize', e.target.value)}
-                    className="w-full px-3 py-1.5 bg-black/40 text-white text-sm rounded border border-white/10 focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-colors outline-none"
+                    className="w-full px-3 py-1.5 bg-black/40 text-white text-sm rounded border border-white/10 focus:border-cyan-500/50 transition-colors outline-none"
                   >
                     <option value="A4">A4</option>
                     <option value="A3">A3</option>
@@ -212,7 +212,7 @@ function ExportModal({ isOpen, onClose, editor, documentData }) {
                   <select
                     value={exportOptions.styling.orientation}
                     onChange={(e) => updateOption('styling.orientation', e.target.value)}
-                    className="w-full px-3 py-1.5 bg-black/40 text-white text-sm rounded border border-white/10 focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-colors outline-none"
+                    className="w-full px-3 py-1.5 bg-black/40 text-white text-sm rounded border border-white/10 focus:border-cyan-500/50 transition-colors outline-none"
                   >
                     <option value="portrait">Portrait</option>
                     <option value="landscape">Landscape</option>
@@ -223,7 +223,7 @@ function ExportModal({ isOpen, onClose, editor, documentData }) {
                   <select
                     value={exportOptions.styling.fontSize}
                     onChange={(e) => updateOption('styling.fontSize', e.target.value)}
-                    className="w-full px-3 py-1.5 bg-black/40 text-white text-sm rounded border border-white/10 focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-colors outline-none"
+                    className="w-full px-3 py-1.5 bg-black/40 text-white text-sm rounded border border-white/10 focus:border-cyan-500/50 transition-colors outline-none"
                   >
                     <option value="10pt">10pt</option>
                     <option value="11pt">11pt</option>

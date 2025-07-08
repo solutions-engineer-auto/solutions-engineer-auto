@@ -331,7 +331,7 @@ function DocumentEditorPage() {
           px-3 py-2 rounded-lg font-medium text-sm
           border transition-all duration-200
           ${isActive 
-            ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_8px_rgba(6,182,212,0.3)]' 
+            ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' 
             : 'bg-white/[0.05] border-white/10 text-white/70 hover:bg-white/[0.08] hover:text-white hover:border-white/20'
           } 
           ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
@@ -358,16 +358,24 @@ function DocumentEditorPage() {
   return (
     <div className={`min-h-screen bg-gradient-to-br from-[#0A0F1E] via-[#0A0F1E] to-[#05070C] ${showAIChat ? 'ai-chat-open' : ''}`}>
       {/* Header */}
-      <div className="glass-panel sticky top-0 z-20 border-b border-white/10">
+      <div className="glass-panel sticky top-0 z-50 border-b border-white/10">
         <div className="max-w-7xl mx-auto px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => navigate(`/accounts/${accountId}`)}
-                className="text-white/70 hover:text-white transition-colors"
+                onClick={() => {
+                  if (!accountId) {
+                    console.error('AccountId is undefined, navigating to accounts list')
+                    navigate('/accounts')
+                  } else {
+                    navigate(`/accounts/${accountId}`)
+                  }
+                }}
+                className="text-white/70 hover:text-white transition-colors relative z-30 px-3 py-2 rounded-lg hover:bg-white/10"
               >
                 ← Back to Account
               </button>
+              
               <div className="h-6 w-px bg-white/20"></div>
               <h1 className="text-xl font-light text-white">Document Editor</h1>
             </div>
@@ -376,7 +384,7 @@ function DocumentEditorPage() {
               {/* AI Chat Button */}
               <button
                 onClick={() => setShowAIChat(!showAIChat)}
-                className="px-4 py-2 text-sm bg-white/[0.08] backdrop-blur-sm border border-white/20 rounded-lg text-white/90 hover:bg-white/[0.12] hover:border-cyan-500/50 hover:shadow-[0_0_12px_rgba(6,182,212,0.3)] transition-all duration-300 flex items-center gap-2"
+                className="px-4 py-2 text-sm bg-white/[0.08] backdrop-blur-sm border border-white/20 rounded-lg text-white/90 hover:bg-white/[0.12] hover:border-cyan-500/50 transition-all duration-300 flex items-center gap-2"
                 title={showAIChat ? 'Close AI Assistant' : 'Open AI Assistant'}
               >
                 <span>🤖</span>
@@ -629,7 +637,7 @@ function DocumentEditorPage() {
                 value={documentData?.status || 'draft'}
                 onChange={(e) => handleStatusChange(e.target.value)}
                 disabled={isFinalized}
-                className="appearance-none bg-white/[0.08] backdrop-blur-md border border-white/[0.15] rounded-lg text-white/90 hover:bg-white/[0.12] hover:border-cyan-500/50 hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all duration-300 px-4 py-2 pr-10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="appearance-none bg-white/[0.08] backdrop-blur-md border border-white/[0.15] rounded-lg text-white/90 hover:bg-white/[0.12] hover:border-cyan-500/50 transition-all duration-300 px-4 py-2 pr-10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {documentStatuses.map(status => (
                   <option key={status.value} value={status.value} className="bg-[#0A0F1E]">
@@ -676,7 +684,7 @@ function DocumentEditorPage() {
               How would you like to modify this text?
             </p>
             <textarea
-              className="w-full p-3 bg-black/40 text-white rounded-lg border border-white/10 focus:border-cyan-500/50 focus:shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-colors outline-none"
+                              className="w-full p-3 bg-black/40 text-white rounded-lg border border-white/10 focus:border-cyan-500/50 transition-colors outline-none"
               rows={3}
               placeholder="e.g., Make it more formal, add technical details, simplify..."
             />

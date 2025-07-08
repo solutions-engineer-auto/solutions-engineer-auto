@@ -30,51 +30,38 @@
   /* Glassmorphic panel base with white edges */
   .glass-panel {
     @apply bg-white/[0.05] backdrop-blur-md rounded-2xl;
-    @apply border-2 border-white/[0.25] shadow-lg shadow-red-900/10;
+    @apply border-2 border-white/[0.25] shadow-lg shadow-cyan-400/10;
     @apply backdrop-saturate-150 relative;
     position: relative;
     overflow: hidden;
     z-index: 0;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
   
   .glass-panel::before {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(45deg, 
+    background: linear-gradient(135deg, 
       transparent 30%, 
-      rgba(139, 26, 26, 0.2) 50%, 
+      rgba(150, 220, 255, 0.08) 50%, 
       transparent 70%);
     border-radius: inherit;
-    z-index: -1;
     opacity: 0;
-    transition: opacity 0.5s ease;
-    transform: rotate(0deg);
-  }
-  
-  .glass-panel::after {
-    content: '';
-    position: absolute;
-    inset: -1px;
-    background: inherit;
-    border-radius: inherit;
-    z-index: -2;
+    transition: opacity 0.3s ease;
+    z-index: -1;
+    pointer-events: none;
   }
 
   .glass-panel-hover {
-    @apply hover:bg-white/[0.08] hover:shadow-xl hover:shadow-red-900/20;
+    @apply hover:bg-white/[0.08] hover:shadow-xl hover:shadow-cyan-400/20;
     @apply hover:border-white/[0.4];
     @apply transition-all duration-300 ease-out;
   }
   
   .glass-panel-hover:hover::before {
     opacity: 1;
-    animation: rotateGlow 4s linear infinite;
-  }
-  
-  @keyframes rotateGlow {
-    0% { transform: rotate(0deg) scale(1.5); }
-    100% { transform: rotate(360deg) scale(1.5); }
   }
 
   /* EPIC Volcanic button base with sea blue */
@@ -84,10 +71,12 @@
     @apply border border-white/20;
     @apply text-white hover:text-white;
     @apply transition-all duration-300 ease-out;
-    @apply hover:scale-[1.02] hover:border-white/40;
-    @apply hover:shadow-[0_0_20px_rgba(6,182,212,0.5)] active:scale-[0.98];
+    @apply hover:border-white/40;
+    @apply active:scale-[0.98];
     position: relative;
     z-index: 1;
+    transform: translateZ(0); /* Force GPU acceleration */
+    backface-visibility: hidden; /* Prevent flickering */
   }
   
   .btn-volcanic::before {
@@ -98,33 +87,16 @@
     opacity: 0;
     transition: opacity 0.3s ease;
     pointer-events: none;
+    border-radius: inherit;
   }
   
   .btn-volcanic:hover::before {
     opacity: 1;
   }
   
-  .btn-volcanic::after {
-    content: '';
-    position: absolute;
-    inset: -1px;
-    background: linear-gradient(45deg, #0ea5e9, #06b6d4, #0891b2, #0ea5e9);
-    border-radius: 12px;
-    z-index: -1;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    background-size: 200% 200%;
-    animation: gradientShift 3s ease infinite;
-  }
-  
-  .btn-volcanic:hover::after {
-    opacity: 0.5;
-  }
-  
-  @keyframes gradientShift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+  .btn-volcanic:hover {
+    box-shadow: 0 4px 20px rgba(6,182,212,0.4);
+    transform: translateY(-1px) translateZ(0);
   }
 
   .btn-volcanic-primary {
@@ -132,16 +104,33 @@
     @apply bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-600;
     @apply border border-white/30;
     @apply text-white;
-    @apply hover:shadow-[0_0_25px_rgba(6,182,212,0.6)] hover:scale-[1.02];
     @apply transition-all duration-300;
     @apply active:scale-[0.98];
     background-size: 200% 100%;
-    animation: shimmer 3s linear infinite;
+    position: relative;
+    z-index: 1;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
   
-  @keyframes shimmer {
-    0% { background-position: -200% center; }
-    100% { background-position: 200% center; }
+  .btn-volcanic-primary:hover {
+    box-shadow: 0 4px 25px rgba(6,182,212,0.5);
+    transform: translateY(-1px) translateZ(0);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+  
+  .btn-volcanic-primary::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%);
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+    border-radius: inherit;
+  }
+  
+  .btn-volcanic-primary:hover::before {
+    transform: translateX(100%);
   }
 
   /* Input styles with blue focus */
@@ -151,7 +140,7 @@
     @apply border-2 border-white/[0.2] text-white;
     @apply placeholder-white/40;
     @apply focus:outline-none focus:border-cyan-400/60;
-    @apply focus:shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all duration-300;
+    @apply transition-all duration-300;
     position: relative;
   }
 
@@ -170,13 +159,13 @@
 }
 
 @layer utilities {
-  /* Glow effects with burgundy */
+  /* Glow effects with soft seafoam */
   .text-glow {
-    text-shadow: 0 0 20px rgba(139, 26, 26, 0.6), 0 0 40px rgba(139, 26, 26, 0.3);
+    text-shadow: 0 0 25px rgba(150, 220, 255, 0.4), 0 0 50px rgba(150, 220, 255, 0.2);
   }
 
   .text-lava-glow {
-    text-shadow: 0 0 30px rgba(139, 26, 26, 0.8), 0 0 60px rgba(139, 26, 26, 0.4);
+    text-shadow: 0 0 35px rgba(150, 220, 255, 0.5), 0 0 70px rgba(150, 220, 255, 0.3);
     animation: pulseGlow 2s ease-in-out infinite;
   }
   
@@ -195,7 +184,7 @@
   .ProseMirror h1:hover,
   .ProseMirror h2:hover,
   .ProseMirror h3:hover {
-    box-shadow: inset 0 0 0 1px rgba(6, 182, 212, 0.3), 0 0 15px rgba(139, 26, 26, 0.2);
+    box-shadow: inset 0 0 0 1px rgba(6, 182, 212, 0.3), 0 0 20px rgba(150, 220, 255, 0.15);
     border-radius: 4px;
     transition: all 0.3s ease;
   }
@@ -295,7 +284,7 @@
     flex-direction: column;
     z-index: 30;
     transition: width 0.3s ease, transform 0.3s ease;
-    box-shadow: -4px 0 24px rgba(139, 26, 26, 0.5);
+    box-shadow: -4px 0 30px rgba(150, 220, 255, 0.3);
     animation: slideInRight 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   }
 
@@ -377,7 +366,6 @@
     @apply text-white;
     @apply border-cyan-500/50;
     @apply scale-105;
-    @apply shadow-[0_0_10px_rgba(6,182,212,0.4)];
   }
 
   .ai-chat-panel .header-button:disabled {
@@ -387,7 +375,6 @@
   .ai-chat-panel .header-button.close-button:hover {
     @apply bg-red-500/20;
     @apply border-red-500/50;
-    @apply shadow-[0_0_10px_rgba(239,68,68,0.4)];
   }
 
   /* Chat Messages */
@@ -467,7 +454,6 @@
     @apply border-cyan-500/30;
     @apply text-white;
     @apply translate-x-1;
-    @apply shadow-[0_0_15px_rgba(6,182,212,0.3)];
   }
   
   .ai-chat-panel .starter-prompt:hover::before {
@@ -527,7 +513,7 @@
     background: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(6, 182, 212, 0.05) 100%);
     border-color: rgba(6, 182, 212, 0.3);
     margin-left: 2rem;
-    box-shadow: 0 0 20px rgba(139, 26, 26, 0.2);
+    box-shadow: 0 0 25px rgba(150, 220, 255, 0.15);
   }
 
   .ai-message.assistant-message .message-content {
@@ -733,7 +719,6 @@
   
   .ai-chat-input .send-button:hover:not(:disabled) {
     @apply scale-105;
-    @apply shadow-[0_0_15px_rgba(6,182,212,0.5)];
     @apply border-white/40;
   }
   

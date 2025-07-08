@@ -300,7 +300,9 @@ function ProspectDetailPage() {
       document.body.appendChild(successMessage)
       
       setTimeout(() => {
-        successMessage.remove()
+        if (successMessage && successMessage.parentNode) {
+          successMessage.remove()
+        }
       }, 3000)
       
     } catch (error) {
@@ -335,7 +337,7 @@ function ProspectDetailPage() {
       successMessage.innerHTML = `
         <div class="flex items-center space-x-2">
           <svg class="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
           </svg>
           <span class="text-white">Reference file removed successfully</span>
         </div>
@@ -343,7 +345,9 @@ function ProspectDetailPage() {
       document.body.appendChild(successMessage)
       
       setTimeout(() => {
-        successMessage.remove()
+        if (successMessage && successMessage.parentNode) {
+          successMessage.remove()
+        }
       }, 3000)
       
     } catch (error) {
@@ -394,7 +398,9 @@ function ProspectDetailPage() {
       document.body.appendChild(successMessage)
       
       setTimeout(() => {
-        successMessage.remove()
+        if (successMessage && successMessage.parentNode) {
+          successMessage.remove()
+        }
       }, 3000)
       
     } catch (error) {
@@ -469,6 +475,13 @@ function ProspectDetailPage() {
       `
       document.body.appendChild(successMessage)
       
+      // Remove the success message after 3 seconds
+      setTimeout(() => {
+        if (successMessage && successMessage.parentNode) {
+          successMessage.remove()
+        }
+      }, 3000)
+      
       // Navigate back to accounts after a short delay
       setTimeout(() => {
         navigate('/accounts')
@@ -535,7 +548,7 @@ function ProspectDetailPage() {
       case 'ready_for_review':
         return 'from-blue-600/80 to-blue-700/80 border-blue-400/60'
       case 'finalized':
-        return 'from-blue-600 to-cyan-500 border-cyan-400/80 shadow-[0_0_15px_rgba(6,182,212,0.4)]'
+        return 'from-blue-600 to-cyan-500 border-cyan-400/80'
       default:
         return 'from-gray-600/50 to-gray-500/50 border-gray-400/30'
     }
@@ -723,6 +736,51 @@ function ProspectDetailPage() {
           <div className="px-8 py-6 border-b border-white/10 flex justify-between items-center">
             <h2 className="text-2xl font-light text-white">Documents</h2>
             <div className="flex items-center space-x-3">
+              {/* AI Generate Button - Placeholder for future */}
+              <button
+                onClick={() => {
+                  // Placeholder - will be implemented with LangGraph
+                  console.log('AI generation coming soon!')
+                }}
+                disabled={true}
+                className="btn-volcanic-primary inline-flex items-center space-x-2 text-sm opacity-50 cursor-not-allowed relative group"
+                title="Coming soon: AI-powered document generation"
+              >
+                {/* AI/Sparkles Icon */}
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                        d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                </svg>
+                <span>Generate Document</span>
+                {/* Tooltip */}
+                <span className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                  Coming soon: AI-powered generation
+                </span>
+              </button>
+
+              {/* Create Empty Document Button */}
+              <button
+                onClick={handleGenerateDocument}
+                disabled={generating}
+                className="btn-volcanic inline-flex items-center space-x-2 text-sm"
+              >
+                {generating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+                    <span>Creating...</span>
+                  </>
+                ) : (
+                  <>
+                    {/* Document Plus Icon */}
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span>Create Empty Document</span>
+                  </>
+                )}
+              </button>
+
               {/* Template Button - Show only if templates exist */}
               {templates.length > 0 && (
                 <button
@@ -740,26 +798,6 @@ function ProspectDetailPage() {
                   </span>
                 </button>
               )}
-              <button
-                onClick={handleGenerateDocument}
-                disabled={generating}
-                className="btn-volcanic-primary inline-flex items-center space-x-2 text-sm"
-              >
-                {generating ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
-                    <span>Generating...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                            d="M12 4v16m8-8H4" />
-                    </svg>
-                    <span>Generate New Document</span>
-                  </>
-                )}
-              </button>
             </div>
           </div>
           <div className="px-8 py-8">
@@ -810,26 +848,72 @@ function ProspectDetailPage() {
                         d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 <p className="text-white/50 font-light mb-8">No documents generated yet</p>
-                <button
-                  onClick={handleGenerateDocument}
-                  disabled={generating}
-                  className="btn-volcanic-primary inline-flex items-center space-x-3 group"
-                >
-                  {generating ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white"></div>
-                      <span>Generating...</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                
+                {/* Document Creation Buttons */}
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                  {/* AI Generate Button - Placeholder for future */}
+                  <button
+                    onClick={() => {
+                      // Placeholder - will be implemented with LangGraph
+                      console.log('AI generation coming soon!')
+                    }}
+                    disabled={true}
+                    className="btn-volcanic-primary inline-flex items-center space-x-2 opacity-50 cursor-not-allowed relative group"
+                    title="Coming soon: AI-powered document generation"
+                  >
+                    {/* AI/Sparkles Icon */}
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                            d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                    </svg>
+                    <span>Generate Document</span>
+                    {/* Tooltip */}
+                    <span className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                      Coming soon: AI-powered generation
+                    </span>
+                  </button>
+
+                  {/* Create Empty Document Button */}
+                  <button
+                    onClick={handleGenerateDocument}
+                    disabled={generating}
+                    className="btn-volcanic inline-flex items-center space-x-2"
+                  >
+                    {generating ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white"></div>
+                        <span>Creating...</span>
+                      </>
+                    ) : (
+                      <>
+                        {/* Document Plus Icon */}
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span>Create Empty Document</span>
+                      </>
+                    )}
+                  </button>
+
+                  {/* Template Button - Show only if templates exist */}
+                  {templates.length > 0 && (
+                    <button
+                      onClick={() => setShowTemplateModal(true)}
+                      className="btn-volcanic inline-flex items-center space-x-2 relative"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                              d="M12 4v16m8-8H4" />
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
-                      <span>Generate Suggested Document</span>
-                    </>
+                      <span>Create from Template</span>
+                      {/* Template count badge */}
+                      <span className="absolute -top-2 -right-2 bg-cyan-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+                        {templates.length}
+                      </span>
+                    </button>
                   )}
-                </button>
+                </div>
               </div>
             )}
           </div>
