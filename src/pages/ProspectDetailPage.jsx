@@ -222,8 +222,61 @@ function ProspectDetailPage() {
     }
   }
 
-  const removeUploadedDocument = async (docId) => {
-    if (!window.confirm('Are you sure you want to remove this context file?')) return
+
+
+  const deleteDocument = async (docId, e) => {
+    // Stop event propagation to prevent navigation
+    e.stopPropagation()
+    
+    const confirmDelete = window.confirm(
+      'Are you sure you want to delete this document? This action cannot be undone.'
+    )
+    
+    if (!confirmDelete) return
+
+    try {
+      const { error } = await supabase
+        .from('documents')
+        .delete()
+        .eq('id', docId)
+
+      if (error) throw error
+
+      // Refresh documents list
+      await fetchAccountDetails()
+      
+      // Show success message (you could use a toast library here)
+      const successMessage = document.createElement('div')
+      successMessage.className = 'fixed top-4 right-4 glass-panel p-4 bg-emerald-500/20 border-emerald-500/30 z-50'
+      successMessage.innerHTML = `
+        <div class="flex items-center space-x-2">
+          <svg class="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          <span class="text-white">Document deleted successfully</span>
+        </div>
+      `
+      document.body.appendChild(successMessage)
+      
+      setTimeout(() => {
+        successMessage.remove()
+      }, 3000)
+      
+    } catch (error) {
+      console.error('Failed to delete document:', error)
+      alert(`Failed to delete document: ${error.message}`)
+    }
+  }
+
+  const deleteReferenceDocument = async (docId, e) => {
+    // Stop event propagation if needed
+    if (e) e.stopPropagation()
+    
+    const confirmDelete = window.confirm(
+      'Are you sure you want to remove this reference file? This will remove it from the context but won\'t affect any documents created from it.'
+    )
+    
+    if (!confirmDelete) return
 
     try {
       const { error } = await supabase
@@ -234,9 +287,27 @@ function ProspectDetailPage() {
       if (error) throw error
 
       await fetchAccountDataSources()
+      
+      // Show success message
+      const successMessage = document.createElement('div')
+      successMessage.className = 'fixed top-4 right-4 glass-panel p-4 bg-emerald-500/20 border-emerald-500/30 z-50'
+      successMessage.innerHTML = `
+        <div class="flex items-center space-x-2">
+          <svg class="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          <span class="text-white">Reference file removed successfully</span>
+        </div>
+      `
+      document.body.appendChild(successMessage)
+      
+      setTimeout(() => {
+        successMessage.remove()
+      }, 3000)
+      
     } catch (error) {
-      console.error('Failed to remove document:', error)
-      alert(`Failed to remove document: ${error.message}`)
+      console.error('Failed to remove reference document:', error)
+      alert(`Failed to remove reference document: ${error.message}`)
     }
   }
 
@@ -395,11 +466,11 @@ function ProspectDetailPage() {
                 {account.documents.map(doc => (
                   <div 
                     key={doc.id} 
-                    className="glass-panel p-6 hover:bg-white/[0.08] transition-all cursor-pointer"
+                    className="glass-panel p-6 hover:bg-white/[0.08] transition-all cursor-pointer group"
                     onClick={() => navigate(`/accounts/${id}/documents/${doc.id}`)}
                   >
                     <div className="flex justify-between items-center">
-                      <div>
+                      <div className="flex-1">
                         <h3 className="font-medium text-white text-lg mb-2">{doc.title}</h3>
                         <p className="text-sm text-white/60 font-light">
                           Last modified: {new Date(doc.updated_at).toLocaleDateString()}
@@ -411,6 +482,16 @@ function ProspectDetailPage() {
                                        backdrop-blur-sm border text-white shadow-sm`}>
                           {doc.status}
                         </span>
+                        <button
+                          onClick={(e) => deleteDocument(doc.id, e)}
+                          className="p-2 hover:bg-red-500/20 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                          title="Delete document"
+                        >
+                          <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
                         <svg className="w-5 h-5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
                                 d="M9 5l7 7-7 7" />
@@ -541,11 +622,11 @@ function ProspectDetailPage() {
                             Edit in Editor
                           </button>
                           <button
-                            onClick={() => removeUploadedDocument(doc.id)}
-                            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                            title="Remove"
+                            onClick={(e) => deleteReferenceDocument(doc.id, e)}
+                            className="p-2 hover:bg-red-500/20 rounded-lg transition-colors group"
+                            title="Remove reference file"
                           >
-                            <svg className="w-5 h-5 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="w-5 h-5 text-red-400 hover:text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
                           </button>

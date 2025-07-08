@@ -385,42 +385,195 @@ class DocumentProcessor {
     
     const text = await file.text()
     
-    // Basic markdown to HTML conversion
+    // Enhanced markdown to HTML conversion
     let html = text
     
-    // Headers
+    // Escape HTML entities first to prevent XSS
+    const escapeMap = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }
+    
+    // Function to escape HTML in non-code content
+    const escapeHtml = (str) => {
+      return str.replace(/[&<>"']/g, (m) => escapeMap[m])
+    }
+    
+    // Preserve code blocks and inline code temporarily
+    const codeBlocks = []
+    const inlineCodes = []
+    
+    // Extract code blocks first
+    html = html.replace(/```([\s\S]*?)```/g, (match, code) => {
+      codeBlocks.push(`<pre><code>${escapeHtml(code.trim())}</code></pre>`)
+      return `__CODE_BLOCK_${codeBlocks.length - 1}__`
+    })
+    
+    // Extract inline code
+    html = html.replace(/`([^`]+)`/g, (match, code) => {
+      inlineCodes.push(`<code>${escapeHtml(code)}</code>`)
+      return `__INLINE_CODE_${inlineCodes.length - 1}__`
+    })
+    
+    // Now escape HTML in the remaining content
+    html = escapeHtml(html)
+    
+    // Headers (h1-h6)
+    html = html.replace(/^###### (.*$)/gim, '<h6>$1</h6>')
+    html = html.replace(/^##### (.*$)/gim, '<h5>$1</h5>')
+    html = html.replace(/^#### (.*$)/gim, '<h4>$1</h4>')
     html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>')
     html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>')
     html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>')
     
-    // Bold
+    // Horizontal rules
+    html = html.replace(/^(-{3,}|_{3,}|\*{3,})$/gim, '<hr>')
+    
+    // Blockquotes
+    html = html.replace(/^&gt; (.+)$/gim, '<blockquote><p>$1</p></blockquote>')
+    // Merge consecutive blockquotes
+    html = html.replace(/<\/blockquote>\n<blockquote>/g, '\n')
+    
+    // Bold (must come before italic to handle **_text_**)
     html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     html = html.replace(/__(.+?)__/g, '<strong>$1</strong>')
     
     // Italic
-    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>')
-    html = html.replace(/_(.+?)_/g, '<em>$1</em>')
+    html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    html = html.replace(/_([^_]+)_/g, '<em>$1</em>')
     
-    // Links
+    // Strikethrough
+    html = html.replace(/~~(.+?)~~/g, '<del>$1</del>')
+    
+    // Links with title
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\s+"([^"]+)"\)/g, '<a href="$2" title="$3">$1</a>')
+    // Links without title
     html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
     
-    // Code blocks
-    html = html.replace(/```(.*?)```/gs, '<pre><code>$1</code></pre>')
+    // Images with alt text
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width: 100%;">')
     
-    // Inline code
-    html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
+    // Task lists
+    html = html.replace(/^- \[x\] (.+)$/gim, '<li style="list-style: none;"><input type="checkbox" checked disabled> $1</li>')
+    html = html.replace(/^- \[ \] (.+)$/gim, '<li style="list-style: none;"><input type="checkbox" disabled> $1</li>')
     
-    // Lists
-    html = html.replace(/^\* (.+)$/gim, '<li>$1</li>')
-    html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+    // Unordered lists (handle nested lists)
+    html = html.replace(/^(\s*)\* (.+)$/gim, (match, spaces, content) => {
+      const level = spaces.length / 2
+      return `${'  '.repeat(level)}<li data-level="${level}">${content}</li>`
+    })
+    html = html.replace(/^- (.+)$/gim, '<li>$1</li>')
     
-    // Paragraphs
-    html = html.split(/\n\n+/).map(p => {
-      if (p.trim() && !p.startsWith('<')) {
-        return `<p>${p.trim()}</p>`
+    // Ordered lists
+    html = html.replace(/^(\d+)\. (.+)$/gim, '<li data-ordered="true">$2</li>')
+    
+    // Process lists into proper nested structure
+    const lines = html.split('\n')
+    const processedLines = []
+    let inList = false
+    let listType = null
+    let currentLevel = 0
+    
+    for (const line of lines) {
+      if (line.includes('<li')) {
+        const isOrdered = line.includes('data-ordered="true"')
+        const level = parseInt(line.match(/data-level="(\d+)"/)?.['1'] || '0')
+        
+        if (!inList) {
+          listType = isOrdered ? 'ol' : 'ul'
+          processedLines.push(`<${listType}>`)
+          inList = true
+          currentLevel = level
+        } else if (level > currentLevel) {
+          // Start nested list
+          listType = isOrdered ? 'ol' : 'ul'
+          processedLines.push(`<${listType}>`)
+          currentLevel = level
+        } else if (level < currentLevel) {
+          // Close nested lists
+          for (let i = currentLevel; i > level; i--) {
+            processedLines.push(`</${listType}>`)
+          }
+          currentLevel = level
+        }
+        
+        // Clean up the li tag
+        const cleanedLine = line
+          .replace(/ data-level="\d+"/g, '')
+          .replace(/ data-ordered="true"/g, '')
+        processedLines.push(cleanedLine)
+      } else if (inList && line.trim() === '') {
+        // Empty line might end the list
+        continue
+      } else {
+        // Not a list item
+        if (inList) {
+          // Close all open lists
+          for (let i = currentLevel; i >= 0; i--) {
+            processedLines.push(`</${listType}>`)
+          }
+          inList = false
+          currentLevel = 0
+        }
+        processedLines.push(line)
       }
-      return p
-    }).join('')
+    }
+    
+    // Close any remaining open lists
+    if (inList) {
+      for (let i = currentLevel; i >= 0; i--) {
+        processedLines.push(`</${listType}>`)
+      }
+    }
+    
+    html = processedLines.join('\n')
+    
+    // Tables (simple implementation)
+    html = html.replace(/\|(.+)\|/g, (match, content) => {
+      if (content.includes('---')) {
+        return '' // Skip separator rows
+      }
+      const cells = content.split('|').map(cell => cell.trim())
+      const cellTags = cells.map(cell => `<td>${cell}</td>`).join('')
+      return `<tr>${cellTags}</tr>`
+    })
+    // Wrap table rows in table tags
+    html = html.replace(/(<tr>[\s\S]+?<\/tr>)/g, '<table style="border-collapse: collapse; width: 100%;">$1</table>')
+    
+    // Restore code blocks and inline code
+    codeBlocks.forEach((code, index) => {
+      html = html.replace(`__CODE_BLOCK_${index}__`, code)
+    })
+    inlineCodes.forEach((code, index) => {
+      html = html.replace(`__INLINE_CODE_${index}__`, code)
+    })
+    
+    // Line breaks (two spaces at end of line)
+    html = html.replace(/ {2}$/gm, '<br>')
+    
+    // Paragraphs - wrap remaining text
+    html = html.split(/\n\n+/).map(block => {
+      block = block.trim()
+      if (block && !block.match(/^<(h[1-6]|ul|ol|li|blockquote|pre|table|tr|hr)/)) {
+        return `<p>${block}</p>`
+      }
+      return block
+    }).filter(block => block).join('\n')
+    
+    // Clean up any remaining newlines within paragraphs
+    html = html.replace(/<p>([^<]+)<\/p>/g, (match, content) => {
+      return `<p>${content.replace(/\n/g, ' ')}</p>`
+    })
+    
+    // Add some basic styling for better appearance in the editor
+    html = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333;">
+        ${html}
+      </div>
+    `
     
     onProgress?.(100, 'Processing complete')
     

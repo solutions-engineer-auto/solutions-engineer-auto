@@ -449,6 +449,74 @@
 - Comprehensive error handling
 - Memory bank documentation for future reference
 
+### Document and Reference File Deletion (COMPLETED)
+- **Date**: December 2024
+- **Status**: ✅ Complete
+- **Features Implemented**:
+  - **Document Deletion** [[memory:2646433]]:
+    - Delete button appears on hover for each document
+    - Confirmation dialog prevents accidental deletions
+    - Event propagation stopped to prevent navigation conflicts
+    - Success notification with auto-dismiss after 3 seconds
+    - Uses `deleteDocument()` function in ProspectDetailPage
+  - **Reference File Deletion**:
+    - Delete button always visible in Context Files section
+    - Context-specific confirmation explaining only reference is removed
+    - Documents created from the file remain untouched
+    - Uses `deleteReferenceDocument()` function
+    - Red-styled buttons for visual clarity
+- **UI Enhancements**:
+  - Hover effects with smooth opacity transitions
+  - Glass-morphic success notifications
+    - Appears in top-right corner
+    - Green background with checkmark icon
+    - Auto-dismisses after 3 seconds
+  - Consistent red color scheme for delete actions
+- **Technical Details**:
+  - Both functions include `e.stopPropagation()` to prevent event bubbling
+  - Proper error handling with user-friendly messages
+  - Lists refresh automatically without page reload
+  - Leverages existing database policies for security
+- **Reusable Components**:
+  - Created `ConfirmationModal.jsx` for future use:
+    - Supports danger/warning/info types
+    - Portal rendering to document body
+    - Animated entrance/exit effects
+    - Backdrop blur for focus
+    - Can replace browser's `window.confirm` throughout app
+
+### Enhanced Markdown Conversion (COMPLETED)
+- **Date**: December 2024
+- **Status**: ✅ Complete
+- **Enhancement**: Upgraded markdown-to-HTML conversion in `documentProcessor.js`
+- **Features Added**:
+  - **Complete Markdown Support**:
+    - All header levels (H1-H6)
+    - Text formatting: bold, italic, strikethrough
+    - Nested lists (ordered/unordered) with proper structure
+    - Task lists with checkboxes
+    - Tables with basic formatting
+    - Blockquotes with paragraph wrapping
+    - Horizontal rules (---, ***, ___)
+    - Links with optional titles
+    - Images with alt text and responsive sizing
+    - Code blocks and inline code with proper escaping
+  - **Security Improvements**:
+    - HTML entity escaping to prevent XSS
+    - Special handling for code blocks
+    - Safe processing of user content
+  - **Better Editor Integration**:
+    - Wrapper div with consistent styling
+    - Proper HTML structure for TipTap compatibility
+    - Lists maintain proper nesting
+    - Images are responsive by default
+- **Technical Implementation**:
+  - Enhanced `processMD()` method in documentProcessor
+  - Extract and preserve code blocks during processing
+  - Apply regex transformations for each markdown feature
+  - Handle complex nested structures properly
+  - Restore code blocks with proper escaping
+
 ## Next Steps
 - Milestone 5: File Upload Interface
   - Create FileUploadDropzone component
