@@ -14,7 +14,14 @@ async function enableMocking() {
   // `worker.start()` returns a Promise that resolves
   // once the Service Worker is up and ready to intercept requests.
   return worker.start({
-    onUnhandledRequest: 'bypass',
+    onUnhandledRequest(request, print) {
+      // Bypass all /api/langgraph requests
+      if (request.url.includes('/api/langgraph')) {
+        return;
+      }
+      // Let MSW handle other requests
+      print.warning();
+    },
   })
 }
 

@@ -4,7 +4,7 @@ import AIMessage from './AIMessage';
 import AIActivityIndicator from './AIActivityIndicator';
 import AIChatInput from './AIChatInput';
 
-const AIChatPanel = ({ isOpen, onClose, documentContent }) => {
+const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, mode, onModeChange, agentThreadId, onThreadCreate }) => {
   const messagesEndRef = useRef(null);
   const [isMinimized, setIsMinimized] = useState(false);
   const [panelWidth, setPanelWidth] = useState(400);
@@ -16,8 +16,9 @@ const AIChatPanel = ({ isOpen, onClose, documentContent }) => {
     currentActivity,
     streamingMessage,
     sendMessage,
-    clearMessages
-  } = useAIChat();
+    clearMessages,
+    currentThread
+  } = useAIChat(mode, agentThreadId, onThreadCreate);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -61,12 +62,12 @@ const AIChatPanel = ({ isOpen, onClose, documentContent }) => {
 
   const handleSendMessage = useCallback((message) => {
     // Add context about the document if it's the first message
-    if (messages.length === 0 && documentContent) {
-      sendMessage(`I'm working on a document. Here's the current content for context:\n\n${documentContent}\n\nMy question: ${message}`);
+    if (messages.length === 0 && documentContent && mode === 'mock') {
+      sendMessage(`I'm working on a document. Here's the current content for context:\n\n${documentContent}\n\nMy question: ${message}`, accountData);
     } else {
-      sendMessage(message);
+      sendMessage(message, accountData);
     }
-  }, [messages.length, documentContent, sendMessage]);
+  }, [messages.length, documentContent, sendMessage, mode, accountData]);
 
   if (!isOpen) return null;
 
@@ -112,6 +113,36 @@ const AIChatPanel = ({ isOpen, onClose, documentContent }) => {
         </div>
       </div>
 
+      {/* Mode Toggle */}
+      {!isMinimized && (
+        <div className="mode-toggle-container glass-panel">
+          <div className="mode-toggle">
+            <span className="mode-label">Mode:</span>
+            <button
+              onClick={() => onModeChange('mock')}
+              className={`mode-button ${mode === 'mock' ? 'active' : ''}`}
+            >
+              Mock
+            </button>
+            <button
+              onClick={() => onModeChange('agent')}
+              className={`mode-button ${mode === 'agent' ? 'active' : ''}`}
+            >
+              Agent
+            </button>
+          </div>
+          {mode === 'agent' && (
+            <div className="agent-status">
+              {currentThread ? (
+                <span className="status-text">Thread: {currentThread.slice(-8)}</span>
+              ) : (
+                <span className="status-text">No active thread</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {!isMinimized && (
         <>
           <div className="chat-messages">
@@ -123,21 +154,21 @@ const AIChatPanel = ({ isOpen, onClose, documentContent }) => {
                 <div className="starter-prompts">
                   <button 
                     className="starter-prompt"
-                    onClick={() => handleSendMessage("What's the main topic of this document?")}
+                    onClick={() => handleSendMessage(mode === 'agent' ? "Generate an integration proposal" : "What's the main topic of this document?")}
                   >
-                    📄 What's the main topic?
+                    📄 {mode === 'agent' ? 'Generate proposal' : "What's the main topic?"}
                   </button>
                   <button 
                     className="starter-prompt"
-                    onClick={() => handleSendMessage("Can you suggest improvements?")}
+                    onClick={() => handleSendMessage(mode === 'agent' ? "Create a technical specification" : "Can you suggest improvements?")}
                   >
-                    ✨ Suggest improvements
+                    ✨ {mode === 'agent' ? 'Create spec' : 'Suggest improvements'}
                   </button>
                   <button 
                     className="starter-prompt"
-                    onClick={() => handleSendMessage("Help me reorganize this content")}
+                    onClick={() => handleSendMessage(mode === 'agent' ? "Write an implementation guide" : "Help me reorganize this content")}
                   >
-                    🔄 Reorganize content
+                    🔄 {mode === 'agent' ? 'Implementation guide' : 'Reorganize content'}
                   </button>
                 </div>
               </div>

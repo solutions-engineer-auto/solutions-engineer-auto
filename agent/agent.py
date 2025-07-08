@@ -37,6 +37,10 @@ class AgentState(TypedDict):
     confidence_score: float
     next_action: str
     ready_for_review: bool
+    # New fields for document generation
+    document_id: str
+    document_content: str
+    account_data: Dict[str, Any]
 
 
 # Tool implementations
@@ -74,10 +78,15 @@ async def search_embeddings(query: str, limit: int = 5) -> List[Dict[str, Any]]:
     return mock_results[:limit]
 
 
-async def fetch_client_info(client_name: str) -> Dict[str, Any]:
-    """Fetch client information from database"""
-    # Mock implementation - replace with Supabase query
-    if client_name.lower() == "acme corp":
+async def fetch_client_info(state: AgentState) -> Dict[str, Any]:
+    """Fetch client information from state or database"""
+    # First check if we have account data in state
+    if state.get("account_data"):
+        return state["account_data"]
+    
+    # Otherwise use mock implementation - replace with Supabase query later
+    client_name = state.get("task", "Unknown Client")
+    if "acme" in client_name.lower():
         return {
             "name": "Acme Corp",
             "industry": "Retail",
@@ -88,7 +97,7 @@ async def fetch_client_info(client_name: str) -> Dict[str, Any]:
     
     return {
         "name": client_name,
-        "industry": "Unknown",
+        "industry": "Technology",
         "size": "Enterprise"
     }
 
@@ -190,6 +199,13 @@ async def execute_tool(state: AgentState) -> AgentState:
     
     action = state.get("next_action", "")
     
+    # Initialize document if needed
+    if not state.get("document_id"):
+        # For now, use mock document ID - will create in Supabase later
+        state["document_id"] = f"doc-{uuid.uuid4().hex[:8]}"
+        state["document_content"] = ""
+        print(f"[MOCK] Would create document in Supabase with ID: {state['document_id']}")
+    
     if action == "SEARCH":
         # Extract search terms from task
         task_lower = state["task"].lower()
@@ -219,8 +235,8 @@ async def execute_tool(state: AgentState) -> AgentState:
             results = await search_embeddings(query)
             all_results[query] = results
         
-        if client_name:
-            client_info = await fetch_client_info(client_name)
+        if client_name or state.get("account_data"):
+            client_info = await fetch_client_info(state)
             all_results["client_info"] = client_info
         
         if "gathered_info" not in state:
@@ -240,6 +256,10 @@ Generate 5-7 main sections. Return just section titles, one per line."""
         outline = [line.strip() for line in response.content.split('\n') if line.strip()]
         state["outline"] = outline[:7]
         state["current_section"] = 0
+        
+        # Initialize document with title
+        doc_title = state.get('task', 'Document').replace('Generate ', '').replace('Create ', '')
+        state["document_content"] = f"# {doc_title}\n\n"
         
     elif action == "GENERATE":
         # Generate next section
@@ -264,25 +284,59 @@ Generate 5-7 main sections. Return just section titles, one per line."""
                 "generated_at": datetime.now().isoformat()
             })
             
+            # Append to document content
+            state["document_content"] += f"## {section_title}\n\n{content}\n\n"
+            
+            # Mock Supabase update - will replace with real update later
+            print(f"[MOCK] Would update document {state['document_id']} in Supabase")
+            print(f"[MOCK] Document now has {len(state['document_sections'])} sections")
+            
             state["current_section"] = state.get("current_section", 0) + 1
             
             if state["current_section"] >= len(state["outline"]):
                 state["ready_for_review"] = True
                 
     elif action == "REVIEW":
+        # When all sections are complete and ready for review
+        # Mark as complete for the initial generation
+        state["complete"] = True
+        state["approved"] = True
         state["ready_for_review"] = True
+        
+        # Add a summary section
+        state["document_content"] += "\n---\n\n*Document generated successfully. Ready for review and feedback.*\n"
+        
+        print(f"[MOCK] Document {state['document_id']} generation complete")
         
     elif action == "PROCESS_FEEDBACK":
         # Process human feedback by regenerating or modifying sections
         feedback = state.get("human_feedback", "")
         
-        # Simple implementation - in production, would be more sophisticated
+        # Analyze feedback and modify document
         if "regenerate" in feedback.lower():
             # Reset to regenerate all sections
             state["document_sections"] = []
             state["current_section"] = 0
+            state["document_content"] = f"# {state.get('task', 'Document')}\n\n"
+        elif feedback:
+            # Use feedback to refine the document
+            refine_prompt = f"""Current document content:
+{state.get('document_content', '')}
+
+User feedback: {feedback}
+
+Revise the document based on this feedback. Return the complete updated document."""
+            
+            response = llm.invoke(refine_prompt)
+            state["document_content"] = response.content
+            
+            # Mock Supabase update
+            print(f"[MOCK] Would update document {state['document_id']} with refined content")
+            
+            state["approved"] = True
+            state["complete"] = True
         else:
-            # Mark as approved if no specific regeneration requested
+            # Mark as approved if no specific feedback
             state["approved"] = True
             state["complete"] = True
     
@@ -297,6 +351,13 @@ async def human_review(state: AgentState) -> AgentState:
     # For cloud deployment, we just mark that we're ready for review
     # The actual review happens through the API
     state["ready_for_review"] = True
+    
+    # FIXED: For initial document generation, also mark as complete
+    # to avoid infinite loop when there's no human feedback yet
+    if not state.get("human_feedback"):
+        state["complete"] = True
+        state["approved"] = True
+        print("[human_review] No feedback yet, marking as complete to avoid recursion")
     
     return state
 
