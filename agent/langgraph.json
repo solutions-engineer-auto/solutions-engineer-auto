@@ -1,0 +1,19 @@
+{
+  "python_version": "3.11",
+  "dependencies": [
+    ".",
+    "langchain>=0.1.0",
+    "langchain-openai>=0.0.5",
+    "langgraph>=0.0.20"
+  ],
+  "graphs": {
+    "document_generator": "./agent.py:graph"
+  },
+  "env": {
+    "OPENAI_API_KEY": "${OPENAI_API_KEY}",
+    "OPENAI_MODEL": "${OPENAI_MODEL}",
+    "SUPABASE_URL": "${SUPABASE_URL}",
+    "SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}",
+    "SUPABASE_SERVICE_KEY": "${SUPABASE_SERVICE_KEY}"
+  }
+}
