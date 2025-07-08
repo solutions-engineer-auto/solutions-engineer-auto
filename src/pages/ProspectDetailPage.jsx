@@ -58,11 +58,8 @@ function ProspectDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-white/20 border-t-orange-500"></div>
-          <p className="mt-4 text-white/70 font-light">Loading account details...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-white/20 border-t-cyan-500"></div>
       </div>
     )
   }
@@ -100,10 +97,18 @@ function ProspectDetailPage() {
 
   const getStatusBadgeColor = (status) => {
     switch (status) {
-      case 'finalized':
-        return 'from-green-500/80 to-emerald-500/80 border-green-400/30'
+      case 'new':
+        return 'from-cyan-500/10 to-cyan-400/10 border-cyan-400/20 backdrop-blur-sm'
       case 'draft':
-        return 'from-amber-500/80 to-yellow-500/80 border-amber-400/30'
+        return 'from-cyan-500/25 to-cyan-400/25 border-cyan-400/30 backdrop-blur-sm'
+      case 'in_progress':
+        return 'from-cyan-500/40 to-blue-500/40 border-cyan-400/40'
+      case 'under_review':
+        return 'from-blue-500/60 to-blue-600/60 border-blue-400/50'
+      case 'ready_for_review':
+        return 'from-blue-600/80 to-blue-700/80 border-blue-400/60'
+      case 'finalized':
+        return 'from-blue-600 to-cyan-500 border-cyan-400/80 shadow-[0_0_15px_rgba(6,182,212,0.4)]'
       default:
         return 'from-gray-600/50 to-gray-500/50 border-gray-400/30'
     }
@@ -113,8 +118,8 @@ function ProspectDetailPage() {
     <div className="min-h-screen relative">
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-40 right-40 w-96 h-96 bg-orange-500/5 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-40 left-40 w-64 h-64 bg-blue-400/5 rounded-full blur-3xl"></div>
+        <div className="absolute top-40 right-40 w-96 h-96 bg-red-900/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-40 left-40 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl"></div>
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -133,7 +138,7 @@ function ProspectDetailPage() {
         {/* Account Summary Card */}
         <div className="glass-panel mb-8 p-8 relative overflow-hidden">
           {/* Subtle gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent"></div>
           
           <div className="relative">
             <div className="flex justify-between items-start">
@@ -154,7 +159,7 @@ function ProspectDetailPage() {
                   </div>
                   <div>
                     <span className="text-sm text-white/60 font-light">Value</span>
-                    <span className="ml-3 text-2xl font-bold bg-gradient-to-r from-orange-500 to-orange-400 bg-clip-text text-transparent">{account.value}</span>
+                    <span className="ml-3 text-2xl font-bold bg-gradient-to-r from-cyan-500 to-cyan-400 bg-clip-text text-transparent">{account.value}</span>
                   </div>
                   <div>
                     <span className="text-sm text-white/60 font-light">Contact</span>

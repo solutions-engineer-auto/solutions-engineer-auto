@@ -43,7 +43,7 @@ function AccountDashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-white/20 border-t-orange-500"></div>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-white/20 border-t-cyan-500"></div>
           <p className="mt-4 text-white/70 font-light">Loading accounts...</p>
         </div>
       </div>
@@ -54,8 +54,8 @@ function AccountDashboard() {
     <div className="min-h-screen relative">
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 right-20 w-64 h-64 bg-orange-500/5 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 left-20 w-96 h-96 bg-blue-400/5 rounded-full blur-3xl"></div>
+        <div className="absolute top-20 right-20 w-64 h-64 bg-red-900/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 left-20 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl"></div>
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -67,14 +67,14 @@ function AccountDashboard() {
                 Account Dashboard
               </h1>
               <p className="text-sm text-white/60 font-light">
-                Welcome back, <span className="text-orange-500">{userId}</span>
+                Welcome back, <span className="text-cyan-500">{userId}</span>
               </p>
             </div>
             <button
               onClick={handleLogout}
               className="btn-volcanic flex items-center space-x-2 group"
             >
-              <svg className="w-5 h-5 group-hover:text-orange-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 group-hover:text-cyan-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
                       d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
@@ -95,7 +95,7 @@ function AccountDashboard() {
                 onClick={() => setSelectedStage(stage)}
                 className={`px-4 py-2 rounded-xl font-light transition-all duration-300 ${
                   selectedStage === stage
-                    ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg shadow-orange-500/30'
+                    ? 'bg-gradient-to-r from-cyan-600 to-cyan-500 text-white shadow-lg shadow-red-900/30'
                     : 'glass-panel glass-panel-hover text-white/80'
                 }`}
               >

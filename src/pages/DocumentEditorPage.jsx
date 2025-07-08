@@ -59,17 +59,17 @@ function DocumentEditorPage() {
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
-          class: 'text-orange-400 underline hover:text-orange-300'
+          class: 'text-cyan-400 underline hover:text-cyan-300'
         }
       }),
       CodeBlock.configure({
         HTMLAttributes: {
-          class: 'bg-black/40 text-orange-300 p-4 rounded-lg font-mono text-sm'
+          class: 'bg-black/40 text-cyan-300 p-4 rounded-lg font-mono text-sm'
         }
       }),
       Highlight.configure({
         HTMLAttributes: {
-          class: 'bg-orange-400/30'
+          class: 'bg-cyan-400/40'
         }
       }),
       Placeholder.configure({
@@ -244,12 +244,12 @@ function DocumentEditorPage() {
 
   // Available document statuses
   const documentStatuses = [
-    { value: 'new', label: 'New', color: 'bg-gray-500/20 text-gray-400' },
-    { value: 'draft', label: 'Draft', color: 'bg-blue-500/20 text-blue-400' },
-    { value: 'in_progress', label: 'In Progress', color: 'bg-purple-500/20 text-purple-400' },
-    { value: 'under_review', label: 'Under Review', color: 'bg-yellow-500/20 text-yellow-400' },
-    { value: 'ready_for_review', label: 'Ready for Review', color: 'bg-orange-500/20 text-orange-400' },
-    { value: 'finalized', label: 'Finalized', color: 'bg-green-500/20 text-green-400' }
+    { value: 'new', label: 'New', color: 'bg-gradient-to-r from-cyan-500/10 to-cyan-400/10 border-2 border-cyan-400/20 text-cyan-300/70 backdrop-blur-sm' },
+    { value: 'draft', label: 'Draft', color: 'bg-gradient-to-r from-cyan-500/25 to-cyan-400/25 border-2 border-cyan-400/30 text-cyan-300/80 backdrop-blur-sm' },
+    { value: 'in_progress', label: 'In Progress', color: 'bg-gradient-to-r from-cyan-500/40 to-blue-500/40 border-2 border-cyan-400/40 text-cyan-300' },
+    { value: 'under_review', label: 'Under Review', color: 'bg-gradient-to-r from-blue-500/60 to-blue-600/60 border-2 border-blue-400/50 text-blue-200' },
+    { value: 'ready_for_review', label: 'Ready for Review', color: 'bg-gradient-to-r from-blue-600/80 to-blue-700/80 border-2 border-blue-400/60 text-blue-100' },
+    { value: 'finalized', label: 'Finalized', color: 'bg-gradient-to-r from-blue-600 to-cyan-500 border-2 border-cyan-400/80 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)]' }
   ]
   
   const currentStatusInfo = documentStatuses.find(s => s.value === documentData?.status) || documentStatuses[1]
@@ -273,7 +273,7 @@ function DocumentEditorPage() {
         title={title}
         className={`p-2 rounded-lg transition-all ${
           isActive 
-            ? 'bg-orange-500/20 text-orange-400' 
+            ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.4)]' 
             : 'hover:bg-white/5 text-white/70 hover:text-white'
         } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
@@ -286,7 +286,7 @@ function DocumentEditorPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0A0F1E] via-[#0A0F1E] to-[#05070C] p-8 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-2 border-orange-500/30 border-t-orange-500 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-cyan-500/30 border-t-cyan-500 mx-auto"></div>
           <p className="mt-4 text-white/70">Loading document...</p>
         </div>
       </div>
@@ -316,7 +316,7 @@ function DocumentEditorPage() {
               {/* AI Chat Button */}
               <button
                 onClick={() => setShowAIChat(!showAIChat)}
-                className="px-3 py-1.5 text-sm bg-white/[0.08] backdrop-blur-md border border-white/[0.15] rounded-lg text-white/90 hover:bg-white/[0.12] hover:border-orange-500/50 transition-all duration-300 flex items-center gap-2"
+                className="px-3 py-1.5 text-sm bg-white/[0.08] backdrop-blur-md border border-white/[0.15] rounded-lg text-white/90 hover:bg-white/[0.12] hover:border-cyan-500/50 hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all duration-300 flex items-center gap-2"
                 title={showAIChat ? 'Close AI Assistant' : 'Open AI Assistant'}
               >
                 <span>🤖</span>
@@ -569,7 +569,7 @@ function DocumentEditorPage() {
                 value={documentData?.status || 'draft'}
                 onChange={(e) => handleStatusChange(e.target.value)}
                 disabled={isFinalized}
-                className="appearance-none bg-white/[0.08] backdrop-blur-md border border-white/[0.15] rounded-lg text-white/90 hover:bg-white/[0.12] hover:border-orange-500/50 transition-all duration-300 px-4 py-2 pr-10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="appearance-none bg-white/[0.08] backdrop-blur-md border border-white/[0.15] rounded-lg text-white/90 hover:bg-white/[0.12] hover:border-cyan-500/50 hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all duration-300 px-4 py-2 pr-10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {documentStatuses.map(status => (
                   <option key={status.value} value={status.value} className="bg-[#0A0F1E]">
@@ -607,7 +607,7 @@ function DocumentEditorPage() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="glass-panel p-8 max-w-lg w-full mx-4">
             <h2 className="text-2xl font-light text-white mb-6">AI Text Regeneration</h2>
-            <p className="text-sm text-orange-400 mb-4">[UI Ready - Backend Integration Pending]</p>
+            <p className="text-sm text-cyan-400 mb-4">[UI Ready - Backend Integration Pending]</p>
             <p className="text-white/70 mb-4">Selected text:</p>
             <div className="bg-black/40 p-4 rounded-lg mb-6 text-white/80 italic">
               "{selectedText}"
@@ -616,7 +616,7 @@ function DocumentEditorPage() {
               How would you like to modify this text?
             </p>
             <textarea
-              className="w-full p-3 bg-black/40 text-white rounded-lg border border-white/10 focus:border-orange-500/50 transition-colors outline-none"
+              className="w-full p-3 bg-black/40 text-white rounded-lg border border-white/10 focus:border-cyan-500/50 focus:shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-colors outline-none"
               rows={3}
               placeholder="e.g., Make it more formal, add technical details, simplify..."
             />
