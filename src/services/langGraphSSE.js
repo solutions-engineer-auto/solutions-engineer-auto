@@ -13,30 +13,47 @@ export class LangGraphSSE {
     
     try {
       console.log('[SSE] Starting stream with:', { prompt, accountData });
+      console.log('[SSE] Existing threadId:', this.threadId);
       
       // For SSE with POST, we need to first make a POST request to initiate
+      const requestBody = JSON.stringify({ prompt, accountData });
+      console.log('[SSE] Request body:', requestBody);
+      console.log('[SSE] Request URL:', '/api/langgraph/stream');
+      
       const initResponse = await fetch('/api/langgraph/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, accountData })
+        body: requestBody
       });
 
       console.log('[SSE] Response status:', initResponse.status);
+      console.log('[SSE] Response headers:', Object.fromEntries(initResponse.headers.entries()));
       
       if (!initResponse.ok) {
         const errorText = await initResponse.text();
         console.error('[SSE] Error response:', errorText);
+        console.error('[SSE] Full response:', {
+          status: initResponse.status,
+          statusText: initResponse.statusText,
+          headers: Object.fromEntries(initResponse.headers.entries()),
+          url: initResponse.url
+        });
         throw new Error(`Failed to start stream: ${initResponse.status} ${initResponse.statusText}`);
       }
 
       // Read the SSE stream
+      console.log('[SSE] Starting to read SSE stream...');
       const reader = initResponse.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let eventCount = 0;
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          console.log('[SSE] Stream ended, total events received:', eventCount);
+          break;
+        }
         
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
@@ -56,7 +73,8 @@ export class LangGraphSSE {
             if (data) {
               try {
                 const parsed = JSON.parse(data);
-                console.log('[SSE Client] Raw parsed event:', parsed);
+                eventCount++;
+                console.log(`[SSE Client] Event #${eventCount} parsed:`, parsed);
                 this.handleEvent(parsed);
               } catch (e) {
                 console.error('Failed to parse SSE data:', e, 'Raw data:', data);

@@ -22,6 +22,10 @@ export const useAIChat = (mode = 'mock', threadId = null, onThreadCreate = null)
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentActivity, setCurrentActivity] = useState(null);
   const [streamingMessage, setStreamingMessage] = useState('');
+  const [connectionStatus, setConnectionStatus] = useState({
+    isConnected: mode === 'mock',
+    lastError: null
+  });
   const sseClientRef = useRef(null);
   const activityTimeoutRef = useRef(null);
   const currentThreadRef = useRef(threadId);
@@ -109,6 +113,9 @@ export const useAIChat = (mode = 'mock', threadId = null, onThreadCreate = null)
 
         sseClientRef.current = sseClient;
         
+        // Update connection status
+        setConnectionStatus({ isConnected: false, lastError: null });
+        
         // If we have an existing thread, send as feedback instead
         if (currentThreadRef.current) {
           // First we need to get threadId from a previous SSE session
@@ -125,6 +132,9 @@ export const useAIChat = (mode = 'mock', threadId = null, onThreadCreate = null)
             }
           }
         }
+        
+        // Connection successful
+        setConnectionStatus({ isConnected: true, lastError: null });
         
         // The SSE client handles all updates, we just need to add the final message
         console.log('[useAIChat] Final streamingMessage:', streamingMessage);
@@ -157,6 +167,13 @@ export const useAIChat = (mode = 'mock', threadId = null, onThreadCreate = null)
     } catch (error) {
       console.error('Chat error:', error);
       setCurrentActivity({ type: 'error', message: error.message || 'Something went wrong...' });
+      
+      // Update connection status with error
+      setConnectionStatus({ 
+        isConnected: false, 
+        lastError: error.message || 'Connection failed'
+      });
+      
       // Add error message to chat
       const errorMessage = {
         id: Date.now() + 1,
@@ -195,6 +212,7 @@ export const useAIChat = (mode = 'mock', threadId = null, onThreadCreate = null)
     streamingMessage,
     sendMessage,
     clearMessages,
-    currentThread: currentThreadRef.current
+    currentThread: currentThreadRef.current,
+    connectionStatus
   };
 }; 

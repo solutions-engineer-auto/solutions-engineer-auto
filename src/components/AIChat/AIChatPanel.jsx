@@ -3,6 +3,7 @@ import { useAIChat } from './useAIChat';
 import AIMessage from './AIMessage';
 import AIActivityIndicator from './AIActivityIndicator';
 import AIChatInput from './AIChatInput';
+import ConnectionStatus from './ConnectionStatus';
 
 const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, mode, onModeChange, agentThreadId, onThreadCreate }) => {
   const messagesEndRef = useRef(null);
@@ -17,7 +18,8 @@ const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, mode, onMo
     streamingMessage,
     sendMessage,
     clearMessages,
-    currentThread
+    currentThread,
+    connectionStatus
   } = useAIChat(mode, agentThreadId, onThreadCreate);
 
   // Auto-scroll to bottom when new messages arrive
@@ -131,15 +133,12 @@ const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, mode, onMo
               Agent
             </button>
           </div>
-          {mode === 'agent' && (
-            <div className="agent-status">
-              {currentThread ? (
-                <span className="status-text">Thread: {currentThread.slice(-8)}</span>
-              ) : (
-                <span className="status-text">No active thread</span>
-              )}
-            </div>
-          )}
+          <ConnectionStatus 
+            mode={mode}
+            isConnected={connectionStatus.isConnected}
+            lastError={connectionStatus.lastError}
+            threadId={currentThread}
+          />
         </div>
       )}
 
