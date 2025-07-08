@@ -9,6 +9,7 @@ import Highlight from '@tiptap/extension-highlight'
 import Placeholder from '@tiptap/extension-placeholder'
 import TextAlign from '@tiptap/extension-text-align'
 import TextStyle from '@tiptap/extension-text-style'
+import AIChatPanel from '../components/AIChat/AIChatPanel'
 
 function DocumentEditorPage() {
   const { accountId, docId } = useParams()
@@ -22,6 +23,7 @@ function DocumentEditorPage() {
   const [showAIModal, setShowAIModal] = useState(false)
   const [selectedText, setSelectedText] = useState('')
   const [initialContent, setInitialContent] = useState('')
+  const [showAIChat, setShowAIChat] = useState(false)
 
   // Initialize TipTap editor
   const editor = useEditor({
@@ -193,6 +195,12 @@ function DocumentEditorPage() {
         e.preventDefault()
         handleSave()
       }
+      
+      // Cmd+Shift+L or Ctrl+Shift+L for AI Chat
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'L') {
+        e.preventDefault()
+        setShowAIChat(prev => !prev)
+      }
     }
 
     // Add event listener
@@ -202,7 +210,7 @@ function DocumentEditorPage() {
     return () => {
       window.document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [editor, handleSave, setShowAIModal, setSelectedText])
+  }, [editor, handleSave, setShowAIModal, setSelectedText, setShowAIChat])
 
   const handleFinalize = async () => {
     if (!confirm('Are you sure you want to finalize this document? This action cannot be undone.')) {
@@ -292,7 +300,7 @@ function DocumentEditorPage() {
   const isFinalized = documentData?.status === 'finalized'
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0A0F1E] via-[#0A0F1E] to-[#05070C]">
+    <div className={`min-h-screen bg-gradient-to-br from-[#0A0F1E] via-[#0A0F1E] to-[#05070C] ${showAIChat ? 'ai-chat-open' : ''}`}>
       {/* Header */}
       <div className="glass-panel sticky top-0 z-20 border-b border-white/10">
         <div className="max-w-7xl mx-auto px-8 py-4">
@@ -309,6 +317,16 @@ function DocumentEditorPage() {
             </div>
             
             <div className="flex items-center space-x-4">
+              {/* AI Chat Button */}
+              <button
+                onClick={() => setShowAIChat(!showAIChat)}
+                className="px-3 py-1.5 text-sm bg-white/[0.08] backdrop-blur-md border border-white/[0.15] rounded-lg text-white/90 hover:bg-white/[0.12] hover:border-orange-500/50 transition-all duration-300 flex items-center gap-2"
+                title={showAIChat ? 'Close AI Assistant' : 'Open AI Assistant'}
+              >
+                <span>🤖</span>
+                <span>AI Assistant</span>
+              </button>
+              
               {/* Status Badge */}
               <div className={`px-3 py-1 rounded-full text-sm font-medium ${
                 documentData?.status === 'finalized' 
@@ -647,6 +665,13 @@ function DocumentEditorPage() {
           </div>
         </div>
       )}
+
+      {/* AI Chat Panel */}
+      <AIChatPanel 
+        isOpen={showAIChat}
+        onClose={() => setShowAIChat(false)}
+        documentContent={editor?.getText() || ''}
+      />
     </div>
   )
 }
