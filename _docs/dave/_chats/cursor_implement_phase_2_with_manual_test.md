@@ -1,5 +1,5 @@
 # Implement phase 2 with manual testing
-_Exported on 7/8/2025 at 14:06:29 CDT from Cursor (1.2.1)_
+_Exported on 7/8/2025 at 14:14:11 CDT from Cursor (1.2.1)_
 
 ---
 
@@ -605,4 +605,78 @@ I'll modify `handleGenerateDocument` in `src/pages/ProspectDetailPage.jsx` to im
 I've updated the logic. Now, when you click "Generate New Document," it will prompt you for a title for the new document. This should resolve the issue you observed.
 
 Please try it out and let me know if it works as you expect.
+
+---
+
+**User**
+
+Ok, this works as expected.  Can you give me manual tests for testing all the subtasks of phase 2 task 3 in implementation-plan.md? It notes that it's already implemented, but I want to test it before checking it off as completed and moving forward.
+
+---
+
+**Cursor**
+
+Of course. It's wise to verify existing functionality. Here are the manual test cases for the document export feature.
+
+### Manual Tests: Document Export
+
+**Prerequisite:** You are on the `DocumentEditorPage` with a document open. The document should contain some varied content for best results (e.g., a heading, a paragraph of text, a bulleted list, and some **bold** text).
+
+---
+
+**Test Case 1: Verify Export Modal**
+
+1.  In the toolbar of the Document Editor, find and click the "Export" button.
+2.  **Expected:** The "Export Document" modal should appear over the editor.
+3.  Click the "Cancel" button or the "X" icon in the corner of the modal.
+4.  **Expected:** The modal should close, and you should be able to interact with the editor again.
+
+---
+
+**Test Case 2: Export as Plain Text (.txt)**
+
+1.  Open the Export Modal.
+2.  Select "Plain Text (.txt)" from the format options.
+3.  Click the "Export" button.
+4.  **Expected:** A file named `document.txt` (or similar) should be downloaded. Open it and verify that it contains the raw text content from your editor, without any special formatting.
+
+---
+
+**Test Case 3: Export as Markdown (.md)**
+
+1.  Open the Export Modal.
+2.  Select "Markdown (.md)" from the format options.
+3.  Click the "Export" button.
+4.  **Expected:** A `.md` file should be downloaded. Open it in a text editor. Verify that the content has been converted to Markdown syntax (e.g., headings are prefixed with `#`, bold text is wrapped in `**`, list items start with `*`).
+
+---
+
+**Test Case 4: Export as HTML (.html)**
+
+1.  Open the Export Modal.
+2.  Select "HTML (.html)" from the format options.
+3.  Click the "Export" button.
+4.  **Expected:** An `.html` file should be downloaded. Open it in a web browser. Verify that the document's structure and formatting (headings, lists, bolding) are rendered correctly.
+
+---
+
+**Test Case 5: Export as DOCX (.docx)**
+
+1.  Open the Export Modal.
+2.  Select "Microsoft Word (.docx)" from the format options.
+3.  Click the "Export" button.
+4.  **Expected:** A `.docx` file should be downloaded. Open it in Microsoft Word, Google Docs, or another compatible editor. Verify that the formatting is preserved.
+
+---
+
+**Test Case 6: Export as PDF (.pdf)**
+
+1.  Open the Export Modal.
+2.  Select "PDF (.pdf)" from the format options.
+3.  Click the "Export" button.
+4.  **Expected:** A `.pdf` file should be downloaded. Open it and verify that the content is rendered correctly with its formatting intact. This is often the most complex export, so pay close attention to layout and styling.
+
+---
+
+Once you've confirmed this functionality works as expected, I'll mark the task as complete in the implementation plan. Let me know how the tests go.
 

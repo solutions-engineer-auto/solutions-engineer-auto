@@ -57,9 +57,9 @@ This document outlines the phased implementation plan for building the Granola A
     *   [X] Update the "Generate New Document" flow to create a new record in the `documents` table and associate it with the correct account and user.
 
 3.  **Implement Document Export**
-    *   [ ] **✅** Design and build the `ExportModal` component.
-    *   [ ] **✅** Create the `documentExport.js` service facade.
-    *   [ ] **✅** Implement all export formatters (`pdf`, `docx`, `md`, `html`, `txt`).
+    *   [X] **✅** Design and build the `ExportModal` component.
+    *   [X] **✅** Create the `documentExport.js` service facade.
+    *   [X] **✅** Implement all export formatters (`pdf`, `docx`, `md`, `html`, `txt`).
     *   *Note: This feature is fully implemented on the frontend and should work correctly once document data is being fetched from Supabase.*
 
 ---
