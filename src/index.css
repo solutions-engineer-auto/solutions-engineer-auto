@@ -81,11 +81,11 @@
   .btn-volcanic {
     @apply px-6 py-3 rounded-xl font-light tracking-wide relative overflow-hidden;
     @apply bg-gradient-to-r from-blue-600 to-cyan-500;
-    @apply border-2 border-white/[0.3] shadow-sm;
+    @apply border border-white/20;
     @apply text-white hover:text-white;
     @apply transition-all duration-300 ease-out;
-    @apply hover:scale-105 hover:border-white/[0.5];
-    @apply hover:shadow-[0_0_30px_rgba(139,26,26,0.5)] active:scale-[0.98];
+    @apply hover:scale-[1.02] hover:border-white/40;
+    @apply hover:shadow-[0_0_20px_rgba(6,182,212,0.5)] active:scale-[0.98];
     position: relative;
     z-index: 1;
   }
@@ -93,37 +93,32 @@
   .btn-volcanic::before {
     content: '';
     position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
-    transition: width 0.6s ease, height 0.6s ease;
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    z-index: -1;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
   }
   
   .btn-volcanic:hover::before {
-    width: 300px;
-    height: 300px;
+    opacity: 1;
   }
   
   .btn-volcanic::after {
     content: '';
     position: absolute;
-    inset: -2px;
+    inset: -1px;
     background: linear-gradient(45deg, #0ea5e9, #06b6d4, #0891b2, #0ea5e9);
-    border-radius: inherit;
-    z-index: -2;
+    border-radius: 12px;
+    z-index: -1;
     opacity: 0;
     transition: opacity 0.3s ease;
-    background-size: 300% 300%;
+    background-size: 200% 200%;
     animation: gradientShift 3s ease infinite;
   }
   
   .btn-volcanic:hover::after {
-    opacity: 1;
+    opacity: 0.5;
   }
   
   @keyframes gradientShift {
@@ -133,11 +128,13 @@
   }
 
   .btn-volcanic-primary {
+    @apply px-6 py-3 rounded-xl font-medium tracking-wide relative overflow-hidden;
     @apply bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-600;
-    @apply border-2 border-white/40;
-    @apply text-white font-medium;
-    @apply hover:shadow-[0_0_40px_rgba(139,26,26,0.6)] hover:scale-[1.05];
+    @apply border border-white/30;
+    @apply text-white;
+    @apply hover:shadow-[0_0_25px_rgba(6,182,212,0.6)] hover:scale-[1.02];
     @apply transition-all duration-300;
+    @apply active:scale-[0.98];
     background-size: 200% 100%;
     animation: shimmer 3s linear infinite;
   }
@@ -365,36 +362,32 @@
   }
 
   .ai-chat-panel .header-button {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: rgba(255, 255, 255, 0.7);
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-size: 1rem;
+    @apply bg-white/[0.08] backdrop-blur-sm;
+    @apply border border-white/20;
+    @apply text-white/70;
+    @apply w-8 h-8 rounded-lg;
+    @apply flex items-center justify-center;
+    @apply cursor-pointer;
+    @apply transition-all duration-200;
+    @apply text-sm;
   }
 
   .ai-chat-panel .header-button:hover:not(:disabled) {
-    background: rgba(6, 182, 212, 0.2);
-    color: white;
-    border-color: rgba(6, 182, 212, 0.5);
-    transform: scale(1.1);
-    box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+    @apply bg-cyan-500/20;
+    @apply text-white;
+    @apply border-cyan-500/50;
+    @apply scale-105;
+    @apply shadow-[0_0_10px_rgba(6,182,212,0.4)];
   }
 
   .ai-chat-panel .header-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+    @apply opacity-50 cursor-not-allowed;
   }
 
   .ai-chat-panel .header-button.close-button:hover {
-    background: rgba(239, 68, 68, 0.2);
-    border-color: rgba(239, 68, 68, 0.5);
+    @apply bg-red-500/20;
+    @apply border-red-500/50;
+    @apply shadow-[0_0_10px_rgba(239,68,68,0.4)];
   }
 
   /* Chat Messages */
@@ -460,36 +453,21 @@
   }
 
   .ai-chat-panel .starter-prompt {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.8);
-    padding: 0.75rem 1rem;
-    border-radius: 12px;
-    text-align: left;
-    cursor: pointer;
-    transition: all 0.3s;
-    font-size: 0.875rem;
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .ai-chat-panel .starter-prompt::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.3), transparent);
-    transition: left 0.5s;
+    @apply bg-white/[0.05] backdrop-blur-sm;
+    @apply border border-white/10;
+    @apply text-white/80;
+    @apply px-4 py-3 rounded-xl;
+    @apply text-left cursor-pointer;
+    @apply transition-all duration-300;
+    @apply text-sm;
   }
 
   .ai-chat-panel .starter-prompt:hover {
-    background: rgba(6, 182, 212, 0.1);
-    border-color: rgba(6, 182, 212, 0.5);
-    color: white;
-    transform: translateX(-2px);
-    box-shadow: 0 0 20px rgba(139, 26, 26, 0.3);
+    @apply bg-cyan-500/10;
+    @apply border-cyan-500/30;
+    @apply text-white;
+    @apply translate-x-1;
+    @apply shadow-[0_0_15px_rgba(6,182,212,0.3)];
   }
   
   .ai-chat-panel .starter-prompt:hover::before {
@@ -743,47 +721,28 @@
   }
 
   .ai-chat-input .send-button {
-    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    color: white;
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s;
-    flex-shrink: 0;
-    position: relative;
-    overflow: hidden;
+    @apply bg-gradient-to-r from-cyan-500 to-blue-500;
+    @apply border border-white/20;
+    @apply text-white;
+    @apply w-9 h-9 rounded-lg;
+    @apply flex items-center justify-center;
+    @apply cursor-pointer;
+    @apply transition-all duration-300;
+    @apply flex-shrink-0;
   }
   
-  .ai-chat-input .send-button::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, transparent 70%);
-    transition: width 0.4s ease, height 0.4s ease;
-    transform: translate(-50%, -50%);
-  }
-
   .ai-chat-input .send-button:hover:not(:disabled) {
-    transform: scale(1.1);
-    box-shadow: 0 0 25px rgba(6, 182, 212, 0.5), 0 0 50px rgba(139, 26, 26, 0.3);
+    @apply scale-105;
+    @apply shadow-[0_0_15px_rgba(6,182,212,0.5)];
+    @apply border-white/40;
   }
   
-  .ai-chat-input .send-button:hover:not(:disabled)::before {
-    width: 100px;
-    height: 100px;
+  .ai-chat-input .send-button:active:not(:disabled) {
+    @apply scale-95;
   }
 
   .ai-chat-input .send-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+    @apply opacity-50 cursor-not-allowed;
   }
 
   .ai-chat-input .input-hint {

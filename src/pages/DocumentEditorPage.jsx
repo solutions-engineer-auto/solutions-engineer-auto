@@ -271,11 +271,15 @@ function DocumentEditorPage() {
         onMouseDown={handleClick}
         disabled={disabled}
         title={title}
-        className={`p-2 rounded-lg transition-all ${
-          isActive 
-            ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.4)]' 
-            : 'hover:bg-white/5 text-white/70 hover:text-white'
-        } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        className={`
+          px-3 py-2 rounded-lg font-medium text-sm
+          border transition-all duration-200
+          ${isActive 
+            ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_8px_rgba(6,182,212,0.3)]' 
+            : 'bg-white/[0.05] border-white/10 text-white/70 hover:bg-white/[0.08] hover:text-white hover:border-white/20'
+          } 
+          ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+        `}
       >
         {children}
       </button>
@@ -316,7 +320,7 @@ function DocumentEditorPage() {
               {/* AI Chat Button */}
               <button
                 onClick={() => setShowAIChat(!showAIChat)}
-                className="px-3 py-1.5 text-sm bg-white/[0.08] backdrop-blur-md border border-white/[0.15] rounded-lg text-white/90 hover:bg-white/[0.12] hover:border-cyan-500/50 hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all duration-300 flex items-center gap-2"
+                className="px-4 py-2 text-sm bg-white/[0.08] backdrop-blur-sm border border-white/20 rounded-lg text-white/90 hover:bg-white/[0.12] hover:border-cyan-500/50 hover:shadow-[0_0_12px_rgba(6,182,212,0.3)] transition-all duration-300 flex items-center gap-2"
                 title={showAIChat ? 'Close AI Assistant' : 'Open AI Assistant'}
               >
                 <span>🤖</span>

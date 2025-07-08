@@ -131,10 +131,10 @@ function ExportModal({ isOpen, onClose, editor, documentData }) {
               <button
                 key={format}
                 onClick={() => setSelectedFormat(format)}
-                className={`p-4 rounded-xl cursor-pointer transition-all ${
+                className={`p-4 rounded-xl border transition-all duration-200 ${
                   selectedFormat === format
-                    ? 'bg-cyan-500/20 border-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.3)]'
-                    : 'glass-panel glass-panel-hover'
+                    ? 'bg-cyan-500/20 border-cyan-500/50 text-white shadow-[0_0_15px_rgba(6,182,212,0.3)]'
+                    : 'bg-white/[0.05] border-white/10 hover:bg-white/[0.08] hover:border-white/20 text-white/80 hover:text-white'
                 }`}
               >
                 <div className="text-2xl mb-2">{info.icon}</div>
