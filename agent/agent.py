@@ -7,23 +7,55 @@ import os
 from typing import TypedDict, Dict, Any, List
 from datetime import datetime
 import uuid
+import sys
+import asyncio
 
 from langgraph.graph import StateGraph, END
 from langchain_openai import ChatOpenAI
 from supabase import create_client, Client
 
-# Initialize clients
-llm = ChatOpenAI(
-    model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-    temperature=0.7,
-    api_key=os.getenv("OPENAI_API_KEY")
-)
+# Validate required environment variables
+required_vars = {
+    "OPENAI_API_KEY": "OpenAI API key for LLM calls",
+    "SUPABASE_URL": "Supabase project URL",
+    "SUPABASE_SERVICE_KEY": "Supabase service key for bypassing RLS"
+}
+
+missing_vars = []
+for var, description in required_vars.items():
+    if not os.getenv(var):
+        missing_vars.append(f"{var} ({description})")
+        
+if missing_vars:
+    print(f"[Agent] ERROR: Missing required environment variables:")
+    for var in missing_vars:
+        print(f"  - {var}")
+    print("\n[Agent] Please set these environment variables in LangGraph Cloud deployment settings.")
+    sys.exit(1)
+
+# Initialize clients with error handling
+try:
+    llm = ChatOpenAI(
+        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        temperature=0.7,
+        api_key=os.getenv("OPENAI_API_KEY"),
+        request_timeout=30  # 30 second timeout per request
+    )
+    print(f"[Agent] OpenAI client initialized with model: {os.getenv('OPENAI_MODEL', 'gpt-4o-mini')}")
+except Exception as e:
+    print(f"[Agent] ERROR: Failed to initialize OpenAI client: {e}")
+    sys.exit(1)
 
 # Initialize Supabase client with service key
-supabase: Client = create_client(
-    os.getenv("SUPABASE_URL"),
-    os.getenv("SUPABASE_SERVICE_KEY")  # Service key bypasses RLS
-)
+try:
+    supabase: Client = create_client(
+        os.getenv("SUPABASE_URL"),
+        os.getenv("SUPABASE_SERVICE_KEY")  # Service key bypasses RLS
+    )
+    print(f"[Agent] Supabase client initialized for URL: {os.getenv('SUPABASE_URL')}")
+except Exception as e:
+    print(f"[Agent] ERROR: Failed to initialize Supabase client: {e}")
+    sys.exit(1)
 
 # Enhanced agent state
 class AgentState(TypedDict):
@@ -84,8 +116,25 @@ async def update_document(state: AgentState, updates: Dict):
 
 async def generate_document(state: AgentState) -> AgentState:
     """Enhanced document generation with Supabase integration"""
+    
+    # Validate required state fields
+    required_fields = ["task", "document_id", "user_id"]
+    for field in required_fields:
+        if not state.get(field):
+            error_msg = f"Missing required field: {field}"
+            print(f"[Agent] ERROR: {error_msg}")
+            state["complete"] = True
+            state["document_content"] = f"# Error\n\n{error_msg}"
+            return state
 
     print(f"[Agent] Starting generation for document: {state['document_id']}")
+    print(f"[Agent] Task: {state['task'][:100]}...")  # Log first 100 chars of task
+    print(f"[Agent] User ID: {state['user_id']}")
+    
+    # Generate a run_id if not provided
+    if not state.get("run_id"):
+        state["run_id"] = f"run-{uuid.uuid4().hex[:12]}"
+        print(f"[Agent] Generated run_id: {state['run_id']}")
 
     # Log user message
     try:
@@ -94,8 +143,8 @@ async def generate_document(state: AgentState) -> AgentState:
             "role": "user",
             "content": state["task"],
             "message_type": "message",
-            "thread_id": state["thread_id"],
-            "run_id": state["run_id"]
+            "thread_id": state.get("thread_id"),
+            "run_id": state.get("run_id")
         }).execute()
     except Exception as e:
         print(f"[Agent] Failed to log user message: {e}")
@@ -107,7 +156,8 @@ async def generate_document(state: AgentState) -> AgentState:
 
     # Create document record if it doesn't exist
     try:
-        supabase.table("documents").insert({
+        print(f"[Agent] Creating document record in database...")
+        result = supabase.table("documents").insert({
             "id": state["document_id"],
             "title": f"Document for {state['account_data'].get('name', 'Unknown')}",
             "account_id": state["account_data"].get("id"),
@@ -115,64 +165,82 @@ async def generate_document(state: AgentState) -> AgentState:
             "generation_status": "generating",
             "generation_started_at": datetime.now().isoformat()
         }).execute()
+        print(f"[Agent] Document record created successfully")
     except Exception as e:
+        print(f"[Agent] Document might already exist, attempting update: {e}")
         # Document might already exist, update it
-        await update_document(state, {
-            "generation_status": "generating",
-            "generation_started_at": datetime.now().isoformat()
-        })
+        try:
+            await update_document(state, {
+                "generation_status": "generating",
+                "generation_started_at": datetime.now().isoformat()
+            })
+            print(f"[Agent] Document record updated successfully")
+        except Exception as update_error:
+            error_msg = f"Failed to create/update document record: {update_error}"
+            print(f"[Agent] ERROR: {error_msg}")
+            await log_event(state, "error", error_msg, {"error": str(update_error)})
+            # Continue anyway - we can still generate content
 
     # Log analysis phase
     await log_event(state, "analyze", "Analyzing account information", {
         "account_data": state["account_data"]
     })
 
-    # Generate content in sections for incremental updates
-    sections = [
-        ("introduction", "Creating introduction"),
-        ("analysis", "Analyzing requirements"),
-        ("recommendations", "Generating recommendations"),
-        ("conclusion", "Writing conclusion")
-    ]
+    # Generate complete document in a single LLM call
+    await log_event(state, "generating", "Generating complete document", {
+        "progress": 10
+    })
 
-    state["document_content"] = f"# Document for {state['account_data'].get('name', 'Unknown')}\n\n"
+    document_prompt = f"""Generate a comprehensive document based on the following:
+    
+Task: {state['task']}
+Client Name: {state['account_data'].get('name', 'Unknown')}
+Client Context: {state['account_data']}
 
-    for i, (section_name, section_description) in enumerate(sections):
-        # Log section start
-        await log_event(state, "section_start", section_description, {
-            "section": section_name,
-            "progress": (i / len(sections)) * 100
+Please create a well-structured document with the following sections:
+1. Introduction - Brief overview and context
+2. Analysis - Detailed analysis of requirements and current situation  
+3. Recommendations - Specific recommendations and proposed solutions
+4. Conclusion - Summary and next steps
+
+Format the response as a complete markdown document with proper headings and sections.
+"""
+
+    try:
+        # Generate the entire document in one call
+        print(f"[Agent] Calling LLM for document generation...")
+        start_time = datetime.now()
+        
+        response = await llm.ainvoke(document_prompt)
+        
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+        print(f"[Agent] LLM call completed in {duration:.2f} seconds")
+        
+        # Set the complete document content
+        state["document_content"] = f"# Document for {state['account_data'].get('name', 'Unknown')}\n\n{response.content}"
+        
+        # Update document with complete content
+        await update_document(state, {
+            "content": state["document_content"]
         })
-
-        # Generate section content
-        section_prompt = f"""Generate the {section_name} section for:
-        Task: {state['task']}
-        Client: {state['account_data'].get('name')}
-        Context: {state['account_data']}
-        """
-
-        try:
-            response = await llm.ainvoke(section_prompt)
-            section_content = f"\n## {section_name.title()}\n\n{response.content}\n"
-            state["document_content"] += section_content
-
-            # Update document incrementally
-            await update_document(state, {
-                "content": state["document_content"]
-            })
-
-            # Log section completion
-            await log_event(state, "section_complete", f"Completed {section_name}", {
-                "section": section_name,
-                "progress": ((i + 1) / len(sections)) * 100,
-                "word_count": len(section_content.split())
-            })
-
-        except Exception as e:
-            await log_event(state, "error", f"Error generating {section_name}: {str(e)}", {
-                "section": section_name,
-                "error": str(e)
-            })
+        
+        # Log completion with metrics
+        await log_event(state, "generated", "Document generation complete", {
+            "progress": 100,
+            "word_count": len(state["document_content"].split()),
+            "duration_seconds": duration
+        })
+        
+    except Exception as e:
+        error_msg = f"Error generating document: {str(e)}"
+        print(f"[Agent] ERROR: {error_msg}")
+        await log_event(state, "error", error_msg, {
+            "error": str(e),
+            "error_type": type(e).__name__
+        })
+        # Set a fallback document content
+        state["document_content"] = f"# Error Generating Document\n\nAn error occurred: {str(e)}"
 
     # Mark generation complete
     await update_document(state, {
@@ -206,13 +274,58 @@ async def generate_document(state: AgentState) -> AgentState:
             await log_event(state, failed["event_type"], failed["content"], failed["data"])
 
     state["complete"] = True
+    print(f"[Agent] Document generation completed. Final status: {'success' if state.get('document_content') else 'failed'}")
     return state
+
+
+async def generate_document_with_timeout(state: AgentState) -> AgentState:
+    """Wrapper to add overall timeout to document generation"""
+    try:
+        # Overall 4-minute timeout for entire generation
+        return await asyncio.wait_for(
+            generate_document(state),
+            timeout=240  # 4 minutes
+        )
+    except asyncio.TimeoutError:
+        print(f"[Agent] ERROR: Document generation timed out after 4 minutes")
+        # Log timeout error
+        try:
+            await log_event(state, "error", "Document generation timed out", {
+                "error": "TimeoutError",
+                "timeout_seconds": 240
+            })
+        except:
+            pass  # Best effort logging
+        
+        # Ensure we have some content
+        if not state.get("document_content"):
+            state["document_content"] = "# Document Generation Timeout\n\nThe document generation process timed out. Please try again."
+        
+        state["complete"] = True
+        return state
+    except Exception as e:
+        print(f"[Agent] ERROR: Unexpected error in document generation: {e}")
+        # Log unexpected error
+        try:
+            await log_event(state, "error", f"Unexpected error: {str(e)}", {
+                "error": str(e),
+                "error_type": type(e).__name__
+            })
+        except:
+            pass  # Best effort logging
+        
+        # Ensure we have some content
+        if not state.get("document_content"):
+            state["document_content"] = f"# Error\n\nAn unexpected error occurred: {str(e)}"
+        
+        state["complete"] = True
+        return state
 
 
 # Build the graph
 def build_graph():
     workflow = StateGraph(AgentState)
-    workflow.add_node("generate", generate_document)
+    workflow.add_node("generate", generate_document_with_timeout)
     workflow.set_entry_point("generate")
     workflow.add_edge("generate", END)
     return workflow.compile()
@@ -237,7 +350,7 @@ if __name__ == "__main__":
                 "stage": "Evaluation",
                 "value": "$150,000"
             },
-            "document_id": f"doc-{int(datetime.now().timestamp())}",
+            "document_id": str(uuid.uuid4()),
             "user_id": "test-user-123",
             "thread_id": "test-thread-123",
             "run_id": "test-run-123"

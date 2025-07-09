@@ -281,6 +281,55 @@ function DocumentEditorPage() {
     }
   }, [editor, handleSave, setShowAIModal, setSelectedText, setShowAIChat])
 
+  // Subscribe to document updates via Supabase realtime
+  useEffect(() => {
+    if (!docId || !editor) return;
+    
+    console.log('[DocumentEditor] Setting up realtime subscription for:', docId);
+    
+    const subscription = supabase
+      .channel(`doc-updates-${docId}`)
+      .on('postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'documents',
+          filter: `id=eq.${docId}`
+        },
+        (payload) => {
+          console.log('[DocumentEditor] Received document update:', payload);
+          const doc = payload.new;
+          
+          // Update local document state
+          setDocumentData(prev => ({
+            ...prev,
+            ...doc
+          }));
+          
+          // Update editor content if changed externally
+          if (doc.content && doc.content !== editor.getHTML()) {
+            editor.commands.setContent(doc.content);
+            setIsDirty(false);
+          }
+          
+          // Handle generation status
+          if (doc.generation_status === 'generating') {
+            setIsGenerating(true);
+            editor.setEditable(false); // Disable editing during generation
+          } else if (doc.generation_status === 'complete' || doc.generation_status === 'idle') {
+            setIsGenerating(false);
+            editor.setEditable(doc.status !== 'finalized'); // Re-enable unless finalized
+          }
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      console.log('[DocumentEditor] Cleaning up subscription');
+      subscription.unsubscribe();
+    };
+  }, [docId, editor]);
+
   const handleStatusChange = async (newStatus) => {
     if (newStatus === 'finalized' && !confirm('Are you sure you want to finalize this document? This action cannot be undone.')) {
       return
