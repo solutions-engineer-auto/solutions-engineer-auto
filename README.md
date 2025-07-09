@@ -52,6 +52,8 @@ This MVP demonstrates how AI agents can streamline the document creation process
    # LangGraph Cloud Configuration
    VITE_LANGGRAPH_API_URL=https://your-deployment.us.langgraph.app
    VITE_LANGGRAPH_API_KEY=your-api-key-here
+   VITE_SUPABASE_URL=your-supabase-url 
+   VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
    ```
 
 4. **Start the development server**
