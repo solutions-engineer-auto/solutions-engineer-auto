@@ -29,8 +29,8 @@ export default async function handler(req, res) {
     return;
   }
   
-  const { prompt, accountData } = parsedBody;
-  console.log('[API Start] Parsed request:', { prompt, accountData });
+  const { prompt, accountData, userId } = parsedBody;
+  console.log('[API Start] Parsed request:', { prompt, accountData, userId });
 
   try {
     console.log('[API Start] Environment vars:', {
@@ -49,11 +49,15 @@ export default async function handler(req, res) {
     console.log('[API Start] Thread created:', thread.thread_id);
     
     console.log('[API Start] Creating run...');
+    const documentId = `doc-${Date.now()}`;
     const run = await client.runs.create(thread.thread_id, 'document_generator', {
       input: { 
         task: prompt, 
         account_data: accountData,
-        document_id: `doc-${Date.now()}`
+        user_id: userId,  // Pass user context for document ownership
+        document_id: documentId,
+        thread_id: thread.thread_id,  // Include for tracking
+        run_id: null  // Will be set by agent
       },
       multitaskStrategy: 'enqueue'
     });
@@ -64,14 +68,17 @@ export default async function handler(req, res) {
       metadata: run.metadata
     });
     
-    // Return the IDs for polling
+    // Update run_id in input for agent to use
+    run.input.run_id = run.run_id;
+    
+    // Return the IDs for realtime subscription
     res.setHeader('Content-Type', 'application/json');
     res.statusCode = 200;
     res.end(JSON.stringify({
       success: true,
       threadId: thread.thread_id,
       runId: run.run_id,
-      status: run.status
+      documentId: documentId
     }));
     
   } catch (error) {
