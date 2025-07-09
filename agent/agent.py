@@ -136,25 +136,9 @@ async def generate_document(state: AgentState) -> AgentState:
         state["run_id"] = f"run-{uuid.uuid4().hex[:12]}"
         print(f"[Agent] Generated run_id: {state['run_id']}")
 
-    # Log user message
-    try:
-        supabase.table("chat_messages").insert({
-            "document_id": state["document_id"],
-            "role": "user",
-            "content": state["task"],
-            "message_type": "message",
-            "thread_id": state.get("thread_id"),
-            "run_id": state.get("run_id")
-        }).execute()
-    except Exception as e:
-        print(f"[Agent] Failed to log user message: {e}")
-
-    # Log start event
-    await log_event(state, "start", "Starting document generation", {
-        "account_name": state["account_data"].get("name", "Unknown")
-    })
-
-    # Create document record if it doesn't exist
+    # Create document record FIRST (before any messages can reference it)
+    # This must happen before ANY chat_messages are inserted due to foreign key constraint
+    document_created = False
     try:
         print(f"[Agent] Creating document record in database...")
         result = supabase.table("documents").insert({
@@ -166,20 +150,45 @@ async def generate_document(state: AgentState) -> AgentState:
             "generation_started_at": datetime.now().isoformat()
         }).execute()
         print(f"[Agent] Document record created successfully")
+        document_created = True
     except Exception as e:
         print(f"[Agent] Document might already exist, attempting update: {e}")
         # Document might already exist, update it
         try:
-            await update_document(state, {
+            result = supabase.table("documents").update({
                 "generation_status": "generating",
-                "generation_started_at": datetime.now().isoformat()
-            })
+                "generation_started_at": datetime.now().isoformat(),
+                "last_activity_at": datetime.now().isoformat()
+            }).eq("id", state["document_id"]).execute()
             print(f"[Agent] Document record updated successfully")
+            document_created = True
         except Exception as update_error:
             error_msg = f"Failed to create/update document record: {update_error}"
             print(f"[Agent] ERROR: {error_msg}")
-            await log_event(state, "error", error_msg, {"error": str(update_error)})
-            # Continue anyway - we can still generate content
+            # Cannot continue without document record due to foreign key constraints
+            state["complete"] = True
+            state["document_content"] = f"# Error\\n\\nFailed to create document record: {update_error}"
+            return state
+
+    # NOW we can safely log messages (document exists in DB)
+    # Log user message
+    try:
+        supabase.table("chat_messages").insert({
+            "document_id": state["document_id"],
+            "role": "user",
+            "content": state["task"],
+            "message_type": "message",
+            "thread_id": state.get("thread_id"),
+            "run_id": state.get("run_id")
+        }).execute()
+        print(f"[Agent] User message logged successfully")
+    except Exception as e:
+        print(f"[Agent] Failed to log user message: {e}")
+
+    # Log start event
+    await log_event(state, "start", "Starting document generation", {
+        "account_name": state["account_data"].get("name", "Unknown")
+    })
 
     # Log analysis phase
     await log_event(state, "analyze", "Analyzing account information", {
