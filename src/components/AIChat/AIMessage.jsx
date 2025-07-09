@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
-const AIMessage = memo(({ message, isStreaming = false }) => {
+const AIMessage = memo(({ message, isStreaming = false, onReplaceDocument }) => {
   const isUser = message.role === 'user';
   
   return (
@@ -15,6 +15,9 @@ const AIMessage = memo(({ message, isStreaming = false }) => {
         <span className="message-role">
           {isUser ? 'You' : 'AI Assistant'}
         </span>
+        {message.isDocument && (
+          <span className="document-badge">📄 Document Generated</span>
+        )}
         <span className="message-time">
           {message.timestamp ? new Date(message.timestamp).toLocaleTimeString([], { 
             hour: '2-digit', 
@@ -26,6 +29,14 @@ const AIMessage = memo(({ message, isStreaming = false }) => {
       <div className="message-content">
         {isUser ? (
           <p>{message.content}</p>
+        ) : message.isDocument ? (
+          <div className="document-generated-notice">
+            <div className="document-icon">📄</div>
+            <div className="document-message">
+              <p className="document-title">Document Generated</p>
+              <p className="document-subtitle">Your document has been created and loaded in the editor.</p>
+            </div>
+          </div>
         ) : (
           <ReactMarkdown
             components={{

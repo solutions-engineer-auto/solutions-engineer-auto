@@ -19,27 +19,21 @@ export default defineConfig(({ mode }) => {
           target: 'http://localhost:5173',
           bypass: async (req, res) => {
             // Import and handle the SSE stream endpoint
-            console.log(`[Vite Proxy] ${req.method} ${req.url}`)
-            console.log('[Vite Proxy] Headers:', req.headers)
+            // Handling stream endpoint
             
             if (req.method === 'POST') {
               // Set environment variables from .env file
-              console.log('[Vite Proxy] Setting environment variables:')
-              console.log('[Vite Proxy] LANGGRAPH_API_URL:', env.LANGGRAPH_API_URL || 'NOT SET')
-              console.log('[Vite Proxy] LANGGRAPH_API_KEY:', env.LANGGRAPH_API_KEY ? '***' + env.LANGGRAPH_API_KEY.slice(-4) : 'NOT SET')
+              // Set environment variables from .env file
               
               process.env.LANGGRAPH_API_URL = env.LANGGRAPH_API_URL
               process.env.LANGGRAPH_API_KEY = env.LANGGRAPH_API_KEY
               
               try {
-                console.log('[Vite Proxy] Loading stream handler...')
                 const streamHandler = await import('./api/langgraph/stream.js')
-                console.log('[Vite Proxy] Executing stream handler...')
                 await streamHandler.default(req, res)
-                console.log('[Vite Proxy] Stream handler completed')
                 return true
               } catch (error) {
-                console.error('[Vite Proxy] Error in stream handler:', error)
+                console.error('[Stream Error]:', error.message)
                 throw error
               }
             }
@@ -85,7 +79,7 @@ export default defineConfig(({ mode }) => {
         '/api/langgraph/start': {
           target: 'http://localhost:5173',
           bypass: async (req, res) => {
-            console.log(`[Vite Proxy] ${req.method} ${req.url}`)
+            // Handling start endpoint
             
             if (req.method === 'POST') {
               process.env.LANGGRAPH_API_URL = env.LANGGRAPH_API_URL
@@ -96,7 +90,7 @@ export default defineConfig(({ mode }) => {
                 await startHandler.default(req, res)
                 return true
               } catch (error) {
-                console.error('[Vite Proxy] Error in start handler:', error)
+                console.error('[Start Error]:', error.message)
                 throw error
               }
             }
@@ -105,7 +99,7 @@ export default defineConfig(({ mode }) => {
         '/api/langgraph/poll': {
           target: 'http://localhost:5173',
           bypass: async (req, res) => {
-            console.log(`[Vite Proxy] ${req.method} ${req.url}`)
+            // Handling poll endpoint
             
             if (req.method === 'GET') {
               process.env.LANGGRAPH_API_URL = env.LANGGRAPH_API_URL
@@ -116,8 +110,7 @@ export default defineConfig(({ mode }) => {
                 await pollHandler.default(req, res)
                 return true
               } catch (error) {
-                console.error('[Vite Proxy] Error in poll handler:', error)
-                console.error('[Vite Proxy] Error stack:', error.stack)
+                console.error('[Poll Error]:', error.message)
                 
                 // Send error response if handler failed
                 res.setHeader('Content-Type', 'application/json')

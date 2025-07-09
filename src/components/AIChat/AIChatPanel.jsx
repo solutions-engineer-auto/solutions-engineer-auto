@@ -5,11 +5,12 @@ import AIActivityIndicator from './AIActivityIndicator';
 import AIChatInput from './AIChatInput';
 import ConnectionStatus from './ConnectionStatus';
 
-const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, mode, onModeChange, agentThreadId, onThreadCreate }) => {
+const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, mode, onModeChange, agentThreadId, onThreadCreate, onDocumentGenerated }) => {
   const messagesEndRef = useRef(null);
   const [isMinimized, setIsMinimized] = useState(false);
   const [panelWidth, setPanelWidth] = useState(400);
   const resizeHandleRef = useRef(null);
+  
   
   const {
     messages,
@@ -19,8 +20,17 @@ const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, mode, onMo
     sendMessage,
     clearMessages,
     currentThread,
-    connectionStatus
+    connectionStatus,
+    lastGeneratedDocument
   } = useAIChat(mode, agentThreadId, onThreadCreate);
+  
+  // Automatically replace document when a new one is generated
+  useEffect(() => {
+    if (lastGeneratedDocument && onDocumentGenerated) {
+      // Auto-replace document with generated content
+      onDocumentGenerated(lastGeneratedDocument.content);
+    }
+  }, [lastGeneratedDocument, onDocumentGenerated]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -174,7 +184,10 @@ const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, mode, onMo
             )}
             
             {messages.map((message) => (
-              <AIMessage key={message.id} message={message} />
+              <AIMessage 
+                key={message.id} 
+                message={message}
+              />
             ))}
             
             {currentActivity && <AIActivityIndicator activity={currentActivity} />}

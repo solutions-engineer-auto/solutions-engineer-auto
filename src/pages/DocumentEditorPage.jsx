@@ -13,6 +13,7 @@ import AIChatPanel from '../components/AIChat/AIChatPanel'
 import ExportModal from '../components/ExportModal'
 import { supabase } from '../supabaseClient'
 import AgentActivity from '../components/AgentActivity'
+import { convertMarkdownToHtml } from '../utils/markdownToHtml'
 
 function DocumentEditorPage() {
   const { accountId, docId } = useParams()
@@ -328,6 +329,30 @@ function DocumentEditorPage() {
   ]
   
   const currentStatusInfo = documentStatuses.find(s => s.value === documentData?.status) || documentStatuses[1]
+
+  // Handle AI-generated document replacement
+  const handleDocumentReplacement = useCallback((markdownContent) => {
+    if (!editor) return;
+    
+    try {
+      // Convert markdown to HTML
+      const htmlContent = convertMarkdownToHtml(markdownContent);
+      
+      // Replace editor content
+      editor.commands.setContent(htmlContent);
+      
+      // Mark as dirty so user can save
+      setIsDirty(true);
+      
+      // Document successfully replaced
+      
+      // Optionally close the AI chat panel
+      // setShowAIChat(false);
+    } catch (error) {
+      console.error('[DocumentEditor] Error replacing document:', error);
+      alert('Failed to replace document content. Please try again.');
+    }
+  }, [editor]);
 
   // Agent integration functions - moved to AI Chat
   // These are kept for potential future use but currently handled by AIChatPanel
@@ -741,6 +766,7 @@ function DocumentEditorPage() {
         onModeChange={setMode}
         agentThreadId={agentThreadId}
         onThreadCreate={setAgentThreadId}
+        onDocumentGenerated={handleDocumentReplacement}
       />
       
       {/* Agent Activity Indicator */}

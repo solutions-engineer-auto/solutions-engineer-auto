@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { isMarkdownDocument } from '../../utils/markdownToHtml';
 
 // Simulated AI activities similar to Cursor
 const AI_ACTIVITIES = [
@@ -25,6 +26,7 @@ export const useAIChat = (mode = 'mock', threadId = null, onThreadCreate = null)
     isConnected: mode === 'mock',
     lastError: null
   });
+  const [lastGeneratedDocument, setLastGeneratedDocument] = useState(null);
   const activityTimeoutRef = useRef(null);
   const currentThreadRef = useRef(threadId);
 
@@ -115,6 +117,7 @@ export const useAIChat = (mode = 'mock', threadId = null, onThreadCreate = null)
           let attempts = 0;
           const maxAttempts = 60; // 60 seconds max
           let documentContent = '';
+          let documentId = null;
           
           while (attempts < maxAttempts) {
             const pollResponse = await fetch(`/api/langgraph/poll?threadId=${threadId}&runId=${runId}`);
@@ -124,7 +127,6 @@ export const useAIChat = (mode = 'mock', threadId = null, onThreadCreate = null)
             }
             
             const pollData = await pollResponse.json();
-            console.log('[useAIChat] Poll response:', pollData);
             
             // Update activity status
             setCurrentActivity({
@@ -135,7 +137,20 @@ export const useAIChat = (mode = 'mock', threadId = null, onThreadCreate = null)
             if (pollData.complete) {
               if (pollData.document) {
                 documentContent = pollData.document;
-                console.log('[useAIChat] Document received, length:', documentContent.length);
+                documentId = pollData.documentId || `ai-doc-${Date.now()}`;
+                // Document received successfully
+                
+                // Check if this is a full document
+                if (isMarkdownDocument(documentContent)) {
+                  const docData = {
+                    content: documentContent,
+                    documentId: documentId,
+                    timestamp: new Date()
+                  };
+                  setLastGeneratedDocument(docData);
+                  // Full document detected, saving for auto-replacement
+                }
+                
                 break;
               } else if (pollData.error) {
                 throw new Error(pollData.error);
@@ -157,13 +172,18 @@ export const useAIChat = (mode = 'mock', threadId = null, onThreadCreate = null)
           setCurrentActivity(null);
           
           // Add the final message
+          const isDoc = isMarkdownDocument(documentContent);
+          // Check if this is a full document
+          
           const aiMessage = {
             id: Date.now() + 1,
             role: 'assistant',
             content: documentContent,
-            timestamp: new Date()
+            timestamp: new Date(),
+            isDocument: isDoc,
+            documentId: documentId
           };
-          console.log('[useAIChat] Adding AI message to chat');
+          // Add message to chat
           setMessages(prev => [...prev, aiMessage]);
           
         } catch (error) {
@@ -248,6 +268,7 @@ export const useAIChat = (mode = 'mock', threadId = null, onThreadCreate = null)
     sendMessage,
     clearMessages,
     currentThread: currentThreadRef.current,
-    connectionStatus
+    connectionStatus,
+    lastGeneratedDocument
   };
 }; 

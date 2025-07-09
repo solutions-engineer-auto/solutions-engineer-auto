@@ -1,9 +1,7 @@
 import { Client } from '@langchain/langgraph-sdk';
 
 export default async function handler(req, res) {
-  console.log('[API Poll] Handler called, method:', req.method);
-  console.log('[API Poll] Request URL:', req.url);
-  console.log('[API Poll] Request headers host:', req.headers.host);
+  // Removed verbose logging for cleaner output
   
   if (req.method !== 'GET') {
     res.setHeader('Content-Type', 'application/json');
@@ -24,7 +22,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  console.log('[API Poll] Polling for:', { threadId, runId });
+  // Polling started
 
   try {
     const client = new Client({
@@ -33,15 +31,7 @@ export default async function handler(req, res) {
     });
 
     // Get run details
-    console.log('[API Poll] Checking run status...');
     const run = await client.runs.get(threadId, runId);
-    
-    console.log('[API Poll] Run status:', {
-      runId: run.run_id,
-      status: run.status,
-      error: run.error,
-      currentNodeId: run.current_node_id
-    });
     
     // Prepare response
     const response = {
@@ -59,23 +49,12 @@ export default async function handler(req, res) {
       // If successful, get the thread state for document content
       if (run.status === 'success') {
         try {
-          console.log('[API Poll] Run successful, fetching thread state...');
           const threadState = await client.threads.get(threadId);
-          
-          console.log('[API Poll] Thread state:', {
-            hasValues: !!threadState.values,
-            valueKeys: threadState.values ? Object.keys(threadState.values) : [],
-            hasDocumentContent: !!threadState.values?.document_content
-          });
           
           if (threadState.values?.document_content) {
             response.document = threadState.values.document_content;
             response.documentId = threadState.values.document_id;
-            console.log('[API Poll] Document found, length:', response.document.length);
-          } else {
-            console.log('[API Poll] No document content in thread state');
-            // Log the full values for debugging
-            console.log('[API Poll] Full thread values:', threadState.values);
+            console.log('[API Poll] Document generated successfully, length:', response.document.length);
           }
         } catch (threadError) {
           console.error('[API Poll] Error fetching thread state:', threadError);

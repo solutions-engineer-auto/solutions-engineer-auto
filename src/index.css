@@ -877,4 +877,35 @@
     border-color: rgba(6, 182, 212, 0.5);
     box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
   }
+  
+  /* Document Generated Badge */
+  .document-badge {
+    @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium;
+    @apply bg-gradient-to-r from-cyan-500/20 to-blue-500/20;
+    @apply border border-cyan-400/30;
+    @apply text-cyan-300 ml-2;
+  }
+  
+  /* Document Generated Notice */
+  .document-generated-notice {
+    @apply flex items-center gap-4 p-4 rounded-lg;
+    @apply bg-gradient-to-r from-cyan-500/10 to-blue-500/10;
+    @apply border border-cyan-400/20;
+  }
+  
+  .document-icon {
+    @apply text-4xl;
+  }
+  
+  .document-message {
+    @apply flex-1;
+  }
+  
+  .document-title {
+    @apply text-cyan-300 font-medium text-base mb-1;
+  }
+  
+  .document-subtitle {
+    @apply text-white/60 text-sm;
+  }
 }
