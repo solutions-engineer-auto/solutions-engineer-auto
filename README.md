@@ -65,9 +65,11 @@ This MVP demonstrates how AI agents can streamline the document creation process
    
    Navigate to http://localhost:5173 in your browser
 
-## LangGraph Agent Deployment
+## LangGraph Agent Setup
 
-The AI agent needs to be deployed to LangGraph Cloud for full functionality:
+### Option 1: Local Development (Recommended for testing)
+
+You can run the LangGraph agent locally for development and testing:
 
 1. **Install Python dependencies**
    ```bash
@@ -80,15 +82,40 @@ The AI agent needs to be deployed to LangGraph Cloud for full functionality:
    ```env
    OPENAI_API_KEY=your-openai-api-key
    OPENAI_MODEL=gpt-4  # or gpt-3.5-turbo
+   SUPABASE_URL=your-supabase-url
+   SUPABASE_SERVICE_KEY=your-supabase-service-key  # Service key for bypassing RLS
    ```
 
-3. **Deploy to LangGraph Cloud**
+3. **Start the local agent server**
+   ```bash
+   cd agent
+   ./run_local.sh
+   ```
+
+   The agent will start on http://localhost:8123
+
+4. **Configure frontend for local mode**
+   Update your `.env.local`:
+   ```env
+   VITE_LANGGRAPH_MODE=local
+   VITE_LANGGRAPH_LOCAL_URL=http://localhost:8123
+   ```
+
+### Option 2: LangGraph Cloud Deployment
+
+For production use, deploy the agent to LangGraph Cloud:
+
+1. **Deploy to LangGraph Cloud**
    Follow the [LangGraph Cloud deployment guide](https://docs.langchain.com/docs/cloud/deployment) to deploy the agent.
    
    The agent file to deploy is `agent/agent.py`
 
-4. **Update frontend configuration**
-   Once deployed, update your `.env.local` with the deployment URL and API key.
+2. **Update frontend configuration**
+   Once deployed, update your `.env.local` with the deployment URL and API key:
+   ```env
+   VITE_LANGGRAPH_API_URL=https://your-deployment.us.langgraph.app
+   VITE_LANGGRAPH_API_KEY=your-api-key-here
+   ```
 
 ## Supabase Setup
 
@@ -105,12 +132,25 @@ The AI agent needs to be deployed to LangGraph Cloud for full functionality:
 
 ## Environment Variables
 
+### Frontend (.env.local)
+
 | Variable | Description | Required |
 |----------|-------------|----------|
 | `VITE_SUPABASE_URL` | Supabase project URL | Yes |
 | `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key | Yes |
-| `VITE_LANGGRAPH_API_URL` | Your LangGraph Cloud deployment URL | Yes (for agent mode) |
-| `VITE_LANGGRAPH_API_KEY` | Your LangGraph Cloud API key | Yes (for agent mode) |
+| `VITE_LANGGRAPH_API_URL` | Your LangGraph Cloud deployment URL | Yes (for cloud mode) |
+| `VITE_LANGGRAPH_API_KEY` | Your LangGraph Cloud API key | Yes (for cloud mode) |
+| `VITE_LANGGRAPH_MODE` | Set to "local" for local agent development | No |
+| `VITE_LANGGRAPH_LOCAL_URL` | Local agent server URL (default: http://localhost:8123) | No |
+
+### Agent (agent/.env)
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `OPENAI_API_KEY` | OpenAI API key for LLM calls | Yes |
+| `OPENAI_MODEL` | Model to use (e.g., gpt-4, gpt-3.5-turbo) | No |
+| `SUPABASE_URL` | Supabase project URL | Yes |
+| `SUPABASE_SERVICE_KEY` | Supabase service key (bypasses RLS) | Yes |
 
 ## Features
 
