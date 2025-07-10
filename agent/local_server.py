@@ -22,7 +22,8 @@ import uvicorn
 from supabase import create_client, Client
 
 # Import your existing agent (after env vars are loaded)
-from agent import graph, AgentState
+from agent import graph
+from state import AgentState, initialize_state
 
 # Initialize Supabase client
 supabase: Client = create_client(
@@ -41,6 +42,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add request logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    print(f"[Local Server] {request.method} {request.url.path}")
+    response = await call_next(request)
+    print(f"[Local Server] Response status: {response.status_code}")
+    return response
 
 
 @app.get("/health")
@@ -76,7 +85,9 @@ async def list_assistants():
 @app.post("/threads/{thread_id}/runs")
 async def create_run(thread_id: str, request: Request):
     """Create a new run and execute the agent"""
+    print(f"[Local Server] POST /threads/{thread_id}/runs called")
     body = await request.json()
+    print(f"[Local Server] Request body: {json.dumps(body, indent=2)}")
     run_id = f"run-{uuid.uuid4().hex[:12]}"
     
     # Store run info for later retrieval
@@ -97,23 +108,34 @@ async def create_run(thread_id: str, request: Request):
     print(f"[Local Server] Creating run with input: {json.dumps(input_data, indent=2)}")
     
     # Create initial state for the agent
-    initial_state = AgentState(
+    initial_state = initialize_state(
         task=input_data.get("task", ""),
         account_data=input_data.get("account_data", {}),
         document_id=input_data.get("document_id", str(uuid.uuid4())),
         user_id=input_data.get("user_id", "local-user"),
         thread_id=thread_id,
-        run_id=run_id,
-        complete=False,
-        document_content="",
-        failed_events=[]
+        run_id=run_id
     )
     
     # Execute the agent asynchronously (fire and forget)
-    asyncio.create_task(execute_agent(initial_state, run_id))
+    print(f"[Local Server] Creating async task for run: {run_id}")
+    task = asyncio.create_task(execute_agent(initial_state, run_id))
+    
+    # Add error logging for the task
+    def task_done_callback(future):
+        try:
+            future.result()
+            print(f"[Local Server] Task completed successfully for run: {run_id}")
+        except Exception as e:
+            print(f"[Local Server] Task failed for run {run_id}: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    task.add_done_callback(task_done_callback)
     
     # Return immediately with run info
     run_info["status"] = "running"
+    print(f"[Local Server] Returning run info: {json.dumps(run_info, indent=2)}")
     return run_info
 
 
@@ -158,10 +180,17 @@ async def execute_agent(state: AgentState, run_id: str):
             # Continue anyway - the agent will handle it
         
         # Run the agent
+        print(f"[Local Server] About to invoke graph for run: {run_id}")
         result = await graph.ainvoke(state)
         
         print(f"[Local Server] Agent execution complete for run: {run_id}")
         print(f"[Local Server] Document generated: {len(result.get('document_content', ''))} characters")
+        print(f"[Local Server] Result has errors: {result.get('errors', [])}")
+        print(f"[Local Server] Result is complete: {result.get('complete', False)}")
+        
+        # Log what we're returning
+        if result.get('document_content'):
+            print(f"[Local Server] Document preview: {result['document_content'][:200]}...")
         
     except Exception as e:
         print(f"[Local Server] Error executing agent for run {run_id}: {e}")
@@ -193,16 +222,13 @@ async def create_run_stream(request: Request):
         print(f"[Local Server] Task: {task[:100]}...")
         
         # Create initial state
-        initial_state = AgentState(
+        initial_state = initialize_state(
             task=task,
             account_data=account_data,
             document_id=document_id,
             user_id=user_id,
             thread_id=thread_id,
-            run_id=f"run-{uuid.uuid4().hex[:12]}",
-            complete=False,
-            document_content="",
-            failed_events=[]
+            run_id=f"run-{uuid.uuid4().hex[:12]}"
         )
         
         async def generate_events():

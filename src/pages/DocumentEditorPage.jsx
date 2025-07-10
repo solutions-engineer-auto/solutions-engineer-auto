@@ -421,19 +421,38 @@ function DocumentEditorPage() {
 
   // Handle AI-generated document replacement
   const handleDocumentReplacement = useCallback((markdownContent) => {
-    if (!editor) return;
+    console.log('[DocumentEditor] handleDocumentReplacement called:', {
+      hasEditor: !!editor,
+      contentLength: markdownContent?.length,
+      editorReady: editor && !editor.isDestroyed,
+      editorEditable: editor?.isEditable
+    });
+    
+    if (!editor) {
+      console.error('[DocumentEditor] No editor instance available');
+      return;
+    }
+    
+    if (editor.isDestroyed) {
+      console.error('[DocumentEditor] Editor is destroyed');
+      return;
+    }
     
     try {
+      console.log('[DocumentEditor] Converting markdown to HTML...');
       // Convert markdown to HTML
       const htmlContent = convertMarkdownToHtml(markdownContent);
+      console.log('[DocumentEditor] HTML content length:', htmlContent?.length);
+      console.log('[DocumentEditor] HTML preview:', htmlContent?.substring(0, 200));
       
       // Replace editor content
+      console.log('[DocumentEditor] Setting editor content...');
       editor.commands.setContent(htmlContent);
       
       // Mark as dirty so user can save
       setIsDirty(true);
       
-      // Document successfully replaced
+      console.log('[DocumentEditor] Document successfully replaced');
       
       // Optionally close the AI chat panel
       // setShowAIChat(false);

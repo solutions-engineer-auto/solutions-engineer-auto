@@ -24,6 +24,7 @@ This MVP demonstrates how AI agents can streamline the document creation process
 - Supabase account (for document storage)
 - LangGraph Cloud account (for AI agent deployment)
 - OpenAI API key (for document generation)
+- Windows, macOS, or Linux operating system
 
 ## Quick Start
 
@@ -40,21 +41,10 @@ This MVP demonstrates how AI agents can streamline the document creation process
 
 3. **Set up environment variables**
    ```bash
-   cp .env.example .env.local
+   cp .env.example .env
    ```
    
-   Edit `.env.local` and add your credentials:
-   ```env
-   # Supabase Configuration
-   VITE_SUPABASE_URL=https://your-project.supabase.co
-   VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
-   
-   # LangGraph Cloud Configuration
-   VITE_LANGGRAPH_API_URL=https://your-deployment.us.langgraph.app
-   VITE_LANGGRAPH_API_KEY=your-api-key-here
-   VITE_SUPABASE_URL=your-supabase-url 
-   VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
-   ```
+   Edit `.env` and add your credentials. See the [Environment Variables](#environment-variables) section for details.
 
 4. **Start the development server**
    ```bash
@@ -71,31 +61,35 @@ This MVP demonstrates how AI agents can streamline the document creation process
 
 You can run the LangGraph agent locally for development and testing:
 
-1. **Install Python dependencies**
-   ```bash
-   cd agent
-   pip install -r requirements.txt
-   ```
-
-2. **Set up agent environment**
-   Create `.env` file in the `agent/` directory:
+1. **Set up environment variables**
+   Create `.env` file in the root directory with your agent credentials:
    ```env
    OPENAI_API_KEY=your-openai-api-key
-   OPENAI_MODEL=gpt-4  # or gpt-3.5-turbo
+   OPENAI_MODEL=gpt-4o-mini  # Optional, defaults to gpt-4o-mini
    SUPABASE_URL=your-supabase-url
    SUPABASE_SERVICE_KEY=your-supabase-service-key  # Service key for bypassing RLS
    ```
 
-3. **Start the local agent server**
+2. **Start the local agent server**
+   
+   On macOS/Linux:
    ```bash
-   cd agent
-   ./run_local.sh
+   ./run_agent_server.sh
+   ```
+   
+   On Windows:
+   ```cmd
+   run_agent_server.bat
    ```
 
-   The agent will start on http://localhost:8123
+   This script automatically:
+   - Creates a Python virtual environment
+   - Installs all required dependencies
+   - Validates your environment configuration
+   - Starts the server on http://localhost:8123
 
-4. **Configure frontend for local mode**
-   Update your `.env.local`:
+3. **Configure frontend for local mode**
+   Update your `.env`:
    ```env
    VITE_LANGGRAPH_MODE=local
    VITE_LANGGRAPH_LOCAL_URL=http://localhost:8123
@@ -111,7 +105,7 @@ For production use, deploy the agent to LangGraph Cloud:
    The agent file to deploy is `agent/agent.py`
 
 2. **Update frontend configuration**
-   Once deployed, update your `.env.local` with the deployment URL and API key:
+   Once deployed, update your `.env` with the deployment URL and API key:
    ```env
    VITE_LANGGRAPH_API_URL=https://your-deployment.us.langgraph.app
    VITE_LANGGRAPH_API_KEY=your-api-key-here
@@ -128,7 +122,7 @@ For production use, deploy the agent to LangGraph Cloud:
    - Documents are stored with account associations
 
 3. **Update environment variables**
-   Add your Supabase credentials to `.env.local`
+   Add your Supabase credentials to `.env`
 
 
 
@@ -155,7 +149,9 @@ Files will appear in a timestamped folder within the `mock/sales_docs/generated_
 
 ## Environment Variables
 
-### Frontend (.env.local)
+All environment variables are configured in a single `.env` file in the root directory. Copy `.env.example` to `.env` to get started.
+
+### Frontend Variables
 
 | Variable | Description | Required |
 |----------|-------------|----------|
@@ -166,14 +162,14 @@ Files will appear in a timestamped folder within the `mock/sales_docs/generated_
 | `VITE_LANGGRAPH_MODE` | Set to "local" for local agent development | No |
 | `VITE_LANGGRAPH_LOCAL_URL` | Local agent server URL (default: http://localhost:8123) | No |
 
-### Agent (agent/.env)
+### Agent/Backend Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `OPENAI_API_KEY` | OpenAI API key for LLM calls | Yes |
-| `OPENAI_MODEL` | Model to use (e.g., gpt-4, gpt-3.5-turbo) | No |
-| `SUPABASE_URL` | Supabase project URL | Yes |
-| `SUPABASE_SERVICE_KEY` | Supabase service key (bypasses RLS) | Yes |
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `OPENAI_API_KEY` | OpenAI API key for LLM calls | Yes | - |
+| `OPENAI_MODEL` | Model to use (e.g., gpt-4o-mini, gpt-4, gpt-3.5-turbo) | No | gpt-4o-mini |
+| `SUPABASE_URL` | Supabase project URL (same as VITE_SUPABASE_URL) | Yes | - |
+| `SUPABASE_SERVICE_KEY` | Supabase service key (bypasses RLS) | Yes | - |
 
 ## Features
 

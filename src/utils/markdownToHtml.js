@@ -4,6 +4,7 @@
  */
 
 export function convertMarkdownToHtml(text) {
+  console.log('[convertMarkdownToHtml] Input text length:', text?.length);
   if (!text) return '';
   
   // Enhanced markdown to HTML conversion

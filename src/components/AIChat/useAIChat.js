@@ -13,6 +13,7 @@ export const useAIChat = ({ documentId, accountData, onDocumentUpdate }) => {
   
   // Subscribe to realtime updates
   useEffect(() => {
+    console.log('[useAIChat] Effect running - documentId:', documentId, 'onDocumentUpdate:', !!onDocumentUpdate);
     if (!documentId) {
       return;
     }
@@ -28,6 +29,12 @@ export const useAIChat = ({ documentId, accountData, onDocumentUpdate }) => {
         },
         (payload) => {
           const msg = payload.new;
+          console.log('[useAIChat] Received message:', {
+            message_type: msg.message_type,
+            role: msg.role,
+            content_preview: msg.content?.substring(0, 100),
+            event_type: msg.event_data?.type
+          });
           
           if (msg.message_type === 'message') {
             // Regular chat message
@@ -76,6 +83,12 @@ export const useAIChat = ({ documentId, accountData, onDocumentUpdate }) => {
           } else if (msg.message_type === 'event') {
             // Agent event - show in chat and update activity
             const eventData = msg.event_data || {};
+            console.log('[useAIChat] Processing event:', {
+              eventType: eventData.type,
+              hasContent: !!eventData.content,
+              contentLength: eventData.content?.length,
+              eventDataKeys: Object.keys(eventData)
+            });
             
             // Add to messages (showing agent thinking)
             setMessages(prev => [...prev, {
@@ -108,10 +121,19 @@ export const useAIChat = ({ documentId, accountData, onDocumentUpdate }) => {
             }
             
             // Handle document content updates
-            if (eventData.type === 'generated' && eventData.content) {
+            if ((eventData.type === 'generated' || eventData.type === 'document_ready') && eventData.content) {
+              console.log('[useAIChat] Document ready event received:', {
+                type: eventData.type,
+                contentLength: eventData.content?.length,
+                hasCallback: !!onDocumentUpdate
+              });
+              
               // Call the document update callback if provided
               if (onDocumentUpdate) {
+                console.log('[useAIChat] Calling onDocumentUpdate with content');
                 onDocumentUpdate(eventData.content);
+              } else {
+                console.warn('[useAIChat] No onDocumentUpdate callback provided');
               }
             }
           }
@@ -129,7 +151,7 @@ export const useAIChat = ({ documentId, accountData, onDocumentUpdate }) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [documentId]);
+  }, [documentId, onDocumentUpdate]);
   
   const sendMessage = useCallback(async (message, mode = 'agent', currentAccountData = null) => {
     if (isStreaming || !message.trim()) return;

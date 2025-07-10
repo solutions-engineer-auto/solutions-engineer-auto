@@ -1,19 +1,26 @@
 """
-Enhanced Document Generation Agent with Supabase Integration
-This agent writes directly to Supabase for realtime updates.
-Version: 1.0.2 - Force restart to clear hanging process
+Enhanced Document Generation Agent with Modular Architecture
+This agent uses a sophisticated linear workflow with multiple specialized nodes.
+Version: 2.0.0 - Modular architecture with enhanced capabilities
 """
 
 import os
-from typing import TypedDict, Dict, Any, List
-from datetime import datetime
-import uuid
 import sys
 import asyncio
+from datetime import datetime
+import uuid
 
 from langgraph.graph import StateGraph, END
-from langchain_openai import ChatOpenAI
-from supabase import create_client, Client
+
+# Import our modular components
+from state import AgentState, initialize_state
+from nodes.retrieval import retrieve_documents
+from nodes.analysis import analyze_context
+from nodes.planning import plan_document
+from nodes.generation import generate_sections
+from nodes.validation import validate_document
+from nodes.assembly import assemble_and_polish
+from utils.supabase_client import supabase_manager
 
 # Validate required environment variables
 required_vars = {
@@ -34,310 +41,197 @@ if missing_vars:
     print("\n[Agent] Please set these environment variables in LangGraph Cloud deployment settings.")
     sys.exit(1)
 
-# Initialize clients with error handling
-try:
-    llm = ChatOpenAI(
-        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-        temperature=0.7,
-        api_key=os.getenv("OPENAI_API_KEY"),
-        request_timeout=30  # 30 second timeout per request
-    )
-    print(f"[Agent] OpenAI client initialized with model: {os.getenv('OPENAI_MODEL', 'gpt-4o-mini')}")
-except Exception as e:
-    print(f"[Agent] ERROR: Failed to initialize OpenAI client: {e}")
-    sys.exit(1)
-
-# Initialize Supabase client with service key
-try:
-    supabase: Client = create_client(
-        os.getenv("SUPABASE_URL"),
-        os.getenv("SUPABASE_SERVICE_KEY")  # Service key bypasses RLS
-    )
-    print(f"[Agent] Supabase client initialized for URL: {os.getenv('SUPABASE_URL')}")
-except Exception as e:
-    print(f"[Agent] ERROR: Failed to initialize Supabase client: {e}")
-    sys.exit(1)
-
-# Enhanced agent state
-class AgentState(TypedDict):
-    task: str
-    account_data: Dict[str, Any]
-    document_id: str
-    document_content: str
-    complete: bool
-    user_id: str
-    thread_id: str
-    run_id: str
-    failed_events: List[Dict[str, Any]]  # For retry logic
+print(f"[Agent] Enhanced modular agent initialized with model: {os.getenv('OPENAI_MODEL', 'gpt-4o-mini')}")
 
 
-async def log_event(state: AgentState, event_type: str, content: str, data: Dict = None):
-    """Log all agent activities to chat_messages with retry logic"""
-    try:
-        result = supabase.table("chat_messages").insert({
-            "document_id": state["document_id"],
-            "role": "assistant",
-            "content": content,
-            "message_type": "event",
-            "event_data": {
-                "type": event_type,
-                "timestamp": datetime.now().isoformat(),
-                **(data or {})
-            },
-            "thread_id": state.get("thread_id"),
-            "run_id": state.get("run_id")
-        }).execute()
-        return result
-    except Exception as e:
-        print(f"[Agent] Failed to log event: {e}")
-        # Store for retry
-        if "failed_events" not in state:
-            state["failed_events"] = []
-        state["failed_events"].append({
-            "event_type": event_type,
-            "content": content,
-            "data": data,
-            "error": str(e),
-            "timestamp": datetime.now().isoformat()
-        })
-
-
-async def generate_document(state: AgentState) -> AgentState:
-    """Enhanced document generation with Supabase integration"""
+async def initialize_document(state: AgentState) -> AgentState:
+    """Initialize document record and log initial messages"""
     
     # Validate required state fields
-    required_fields = ["task", "document_id", "user_id"]
+    required_fields = ["task", "document_id", "user_id", "account_data"]
     for field in required_fields:
         if not state.get(field):
             error_msg = f"Missing required field: {field}"
             print(f"[Agent] ERROR: {error_msg}")
             state["complete"] = True
             state["document_content"] = f"# Error\n\n{error_msg}"
+            state["errors"] = state.get("errors", []) + [error_msg]
             return state
-
-    print(f"[Agent] Starting generation for document: {state['document_id']}")
-    print(f"[Agent] Task: {state['task'][:100]}...")  # Log first 100 chars of task
-    print(f"[Agent] User ID: {state['user_id']}")
     
-    # Generate a run_id if not provided
+    print(f"[Agent] Starting enhanced workflow for document: {state['document_id']}")
+    print(f"[Agent] Task: {state['task'][:100]}...")
+    
+    # Generate run_id if not provided
     if not state.get("run_id"):
         state["run_id"] = f"run-{uuid.uuid4().hex[:12]}"
-        print(f"[Agent] Generated run_id: {state['run_id']}")
-
-    # Create document record FIRST (before any messages can reference it)
-    # This must happen before ANY chat_messages are inserted due to foreign key constraint
-    document_created = False
-    try:
-        print(f"[Agent] Creating document record in database...")
-        # Get account_id from state
-        account_id = state["account_data"].get("id")
-        if not account_id:
-            error_msg = "No account_id provided in account_data"
-            print(f"[Agent] ERROR: {error_msg}")
-            state["complete"] = True
-            state["document_content"] = f"# Error\n\n{error_msg}"
-            return state
-            
-        result = supabase.table("documents").insert({
-            "id": state["document_id"],
-            "title": f"Document for {state['account_data'].get('name', 'Unknown')}",
-            "account_id": account_id,
-            "author_id": state["user_id"],
-            "generation_status": "generating"
-        }).execute()
-        print(f"[Agent] Document record created successfully")
-        document_created = True
-    except Exception as e:
-        print(f"[Agent] Failed to create document: {e}")
-        # Try to check if document actually exists
-        try:
-            check_result = supabase.table("documents").select("id").eq("id", state["document_id"]).execute()
-            if check_result.data:
-                print(f"[Agent] Document already exists, proceeding...")
-                document_created = True
-            else:
-                print(f"[Agent] Document does not exist and cannot be created")
-                document_created = False
-        except Exception as update_error:
-            error_msg = f"Failed to create/update document record: {update_error}"
-            print(f"[Agent] ERROR: {error_msg}")
-            document_created = False
-            
-    if not document_created:
-        # Cannot continue without document record due to foreign key constraints
+    
+    # Create document record
+    account_id = state["account_data"].get("id")
+    if not account_id:
+        error_msg = "No account_id provided in account_data"
         state["complete"] = True
-        state["document_content"] = f"# Error\n\nFailed to create document record. Please ensure the document exists in the database."
+        state["document_content"] = f"# Error\n\n{error_msg}"
+        state["errors"] = state.get("errors", []) + [error_msg]
         return state
-
-    # NOW we can safely log messages (document exists in DB)
+    
+    # Create document in database
+    success = await supabase_manager.create_document_record(
+        document_id=state["document_id"],
+        account_id=account_id,
+        author_id=state["user_id"],
+        title=f"Document for {state['account_data'].get('name', 'Unknown')}"
+    )
+    
+    if not success:
+        state["complete"] = True
+        state["document_content"] = "# Error\n\nFailed to create document record."
+        state["errors"] = state.get("errors", []) + ["Failed to create document record"]
+        return state
+    
     # Log user message
-    try:
-        supabase.table("chat_messages").insert({
-            "document_id": state["document_id"],
-            "role": "user",
-            "content": state["task"],
-            "message_type": "message",
-            "thread_id": state.get("thread_id"),
-            "run_id": state.get("run_id")
-        }).execute()
-        print(f"[Agent] User message logged successfully")
-    except Exception as e:
-        print(f"[Agent] Failed to log user message: {e}")
-
-    # Log start event
-    await log_event(state, "start", "Starting document generation", {
-        "account_name": state["account_data"].get("name", "Unknown")
-    })
-
-    # Log analysis phase
-    await log_event(state, "analyze", "Analyzing account information", {
-        "account_data": state["account_data"]
-    })
-
-    # Generate complete document in a single LLM call
-    await log_event(state, "generating", "Generating complete document", {
-        "progress": 10
-    })
-
-    document_prompt = f"""Generate a comprehensive document based on the following:
+    await supabase_manager.log_message(
+        document_id=state["document_id"],
+        role="user",
+        content=state["task"],
+        thread_id=state["thread_id"],
+        run_id=state["run_id"]
+    )
     
-Task: {state['task']}
-Client Name: {state['account_data'].get('name', 'Unknown')}
-Client Context: {state['account_data']}
-
-Please create a well-structured document with the following sections:
-1. Introduction - Brief overview and context
-2. Analysis - Detailed analysis of requirements and current situation  
-3. Recommendations - Specific recommendations and proposed solutions
-4. Conclusion - Summary and next steps
-
-Format the response as a complete markdown document with proper headings and sections.
-
-IMPORTANT: Return ONLY the markdown content. Do NOT wrap the response in markdown code blocks (```). 
-Do NOT include ```markdown at the beginning or ``` at the end.
-Just return the raw markdown text with headings, bullets, etc.
-"""
-
-    try:
-        # Generate the entire document in one call
-        print(f"[Agent] Calling LLM for document generation...")
-        start_time = datetime.now()
-        
-        response = await llm.ainvoke(document_prompt)
-        
-        end_time = datetime.now()
-        duration = (end_time - start_time).total_seconds()
-        print(f"[Agent] LLM call completed in {duration:.2f} seconds")
-        
-        # Set the complete document content
-        state["document_content"] = f"# Document for {state['account_data'].get('name', 'Unknown')}\n\n{response.content}"
-        
-        # Log completion with metrics and include the content
-        await log_event(state, "generated", "Generated document content", {
-            "progress": 100,
-            "word_count": len(state["document_content"].split()),
-            "duration_seconds": duration,
-            "content": state["document_content"]  # Include the actual content
-        })
-        
-    except Exception as e:
-        error_msg = f"Error generating document: {str(e)}"
-        print(f"[Agent] ERROR: {error_msg}")
-        await log_event(state, "error", error_msg, {
-            "error": str(e),
-            "error_type": type(e).__name__
-        })
-        # Set a fallback document content
-        state["document_content"] = f"# Error Generating Document\n\nAn error occurred: {str(e)}"
-
-    # Mark generation complete (status only, no content)
-    try:
-        await supabase.table("documents").update({
-            "generation_status": "complete"
-        }).eq("id", state["document_id"]).execute()
-    except Exception as e:
-        print(f"[Agent] Failed to update generation status: {e}")
+    # Log workflow start
+    await supabase_manager.log_event(
+        document_id=state["document_id"],
+        event_type="workflow_start",
+        content="Starting enhanced document generation workflow",
+        data={
+            "account_name": state["account_data"].get("name"),
+            "workflow_version": "2.0.0"
+        },
+        thread_id=state["thread_id"],
+        run_id=state["run_id"]
+    )
     
-    # Log completion
-    await log_event(state, "complete", "Document generation complete", {
-        "total_words": len(state["document_content"].split()),
-        "duration_seconds": 0  # Calculate if needed
-    })
-
-    # Log the final response as a message
-    try:
-        supabase.table("chat_messages").insert({
-            "document_id": state["document_id"],
-            "role": "assistant",
-            "content": "I've successfully generated your document. You can now review and edit it as needed.",
-            "message_type": "message",
-            "thread_id": state["thread_id"],
-            "run_id": state["run_id"]
-        }).execute()
-    except Exception as e:
-        print(f"[Agent] Failed to log final message: {e}")
-
-    # Retry any failed events
-    if state.get("failed_events"):
-        print(f"[Agent] Retrying {len(state['failed_events'])} failed events")
-        for failed in state["failed_events"]:
-            await log_event(state, failed["event_type"], failed["content"], failed["data"])
-
-    state["complete"] = True
-    print(f"[Agent] Document generation completed. Final status: {'success' if state.get('document_content') else 'failed'}")
     return state
 
 
-async def generate_document_with_timeout(state: AgentState) -> AgentState:
-    """Wrapper to add overall timeout to document generation"""
-    try:
-        # Overall 4-minute timeout for entire generation
-        return await asyncio.wait_for(
-            generate_document(state),
-            timeout=240  # 4 minutes
-        )
-    except asyncio.TimeoutError:
-        print(f"[Agent] ERROR: Document generation timed out after 4 minutes")
-        # Log timeout error
-        try:
-            await log_event(state, "error", "Document generation timed out", {
-                "error": "TimeoutError",
-                "timeout_seconds": 240
-            })
-        except:
-            pass  # Best effort logging
-        
-        # Ensure we have some content
-        if not state.get("document_content"):
-            state["document_content"] = "# Document Generation Timeout\n\nThe document generation process timed out. Please try again."
-        
-        state["complete"] = True
-        return state
-    except Exception as e:
-        print(f"[Agent] ERROR: Unexpected error in document generation: {e}")
-        # Log unexpected error
-        try:
-            await log_event(state, "error", f"Unexpected error: {str(e)}", {
-                "error": str(e),
-                "error_type": type(e).__name__
-            })
-        except:
-            pass  # Best effort logging
-        
-        # Ensure we have some content
-        if not state.get("document_content"):
-            state["document_content"] = f"# Error\n\nAn unexpected error occurred: {str(e)}"
-        
-        state["complete"] = True
-        return state
+async def finalize_document(state: AgentState) -> AgentState:
+    """Finalize document generation and update status"""
+    print(f"[Agent] Starting finalize_document for document: {state['document_id']}")
+    
+    # Ensure document_content exists even if there was an error
+    if not state.get("document_content"):
+        print(f"[Agent] No document_content found, creating error document")
+        if state.get("errors"):
+            state["document_content"] = f"# Document Generation Error\n\nErrors encountered:\n" + "\n".join(f"- {err}" for err in state["errors"])
+        else:
+            state["document_content"] = "# Document Generation Failed\n\nNo content was generated."
+    
+    # Update document status
+    await supabase_manager.update_document_status(
+        document_id=state["document_id"],
+        status="complete"
+    )
+    
+    # Log workflow completion
+    total_duration = sum(state.get("stage_timings", {}).values())
+    
+    await supabase_manager.log_event(
+        document_id=state["document_id"],
+        event_type="workflow_complete",
+        content="Enhanced document generation workflow complete",
+        data={
+            "total_duration_seconds": total_duration,
+            "stages_completed": state.get("completed_stages", []),
+            "quality_score": state.get("overall_quality_score", 0),
+            "total_words": len(state.get("document_content", "").split()),
+            "errors": state.get("errors", [])
+        },
+        thread_id=state["thread_id"],
+        run_id=state["run_id"]
+    )
+    
+    # Log final content as event (for real-time updates)
+    await supabase_manager.log_event(
+        document_id=state["document_id"],
+        event_type="document_ready",
+        content="Document is ready for review",
+        data={
+            "content": state.get("document_content", "")
+        },
+        thread_id=state["thread_id"],
+        run_id=state["run_id"]
+    )
+    
+    # Log assistant message
+    await supabase_manager.log_message(
+        document_id=state["document_id"],
+        role="assistant",
+        content=f"I've successfully generated your document using our enhanced workflow. The document went through {len(state.get('completed_stages', []))} processing stages with an overall quality score of {state.get('overall_quality_score', 0):.2f}. You can now review and edit it as needed.",
+        thread_id=state["thread_id"],
+        run_id=state["run_id"]
+    )
+    
+    state["complete"] = True
+    print(f"[Agent] Enhanced workflow completed successfully")
+    print(f"[Agent] Final document length: {len(state.get('document_content', ''))}")
+    print(f"[Agent] Completed stages: {state.get('completed_stages', [])}")
+    print(f"[Agent] Total errors: {len(state.get('errors', []))}")
+    return state
 
 
-# Build the graph
+def handle_workflow_with_timeout(workflow_func):
+    """Wrapper to add timeout to any workflow function"""
+    async def wrapper(state: AgentState) -> AgentState:
+        try:
+            # 5-minute timeout for entire workflow
+            return await asyncio.wait_for(
+                workflow_func(state),
+                timeout=300
+            )
+        except asyncio.TimeoutError:
+            print(f"[Agent] ERROR: Workflow timed out")
+            state["errors"] = state.get("errors", []) + ["Workflow timeout"]
+            state["document_content"] = state.get("document_content") or "# Timeout Error\n\nThe document generation timed out."
+            state["complete"] = True
+            return state
+        except Exception as e:
+            import traceback
+            print(f"[Agent] ERROR: Unexpected error: {e}")
+            print(f"[Agent] Traceback:\n{traceback.format_exc()}")
+            state["errors"] = state.get("errors", []) + [str(e)]
+            state["document_content"] = state.get("document_content") or f"# Error\n\n{str(e)}"
+            state["complete"] = True
+            return state
+    return wrapper
+
+
+# Build the enhanced workflow graph
 def build_graph():
+    """Build the sophisticated linear document generation workflow"""
     workflow = StateGraph(AgentState)
-    workflow.add_node("generate", generate_document_with_timeout)
-    workflow.set_entry_point("generate")
-    workflow.add_edge("generate", END)
+    
+    # Add all nodes to the workflow
+    workflow.add_node("initialize", initialize_document)
+    workflow.add_node("retrieve", handle_workflow_with_timeout(retrieve_documents))
+    workflow.add_node("analyze", handle_workflow_with_timeout(analyze_context))
+    workflow.add_node("plan", handle_workflow_with_timeout(plan_document))
+    workflow.add_node("generate", handle_workflow_with_timeout(generate_sections))
+    workflow.add_node("validate", handle_workflow_with_timeout(validate_document))
+    workflow.add_node("assemble", handle_workflow_with_timeout(assemble_and_polish))
+    workflow.add_node("finalize", finalize_document)
+    
+    # Set entry point
+    workflow.set_entry_point("initialize")
+    
+    # Define the linear flow
+    workflow.add_edge("initialize", "retrieve")
+    workflow.add_edge("retrieve", "analyze")
+    workflow.add_edge("analyze", "plan")
+    workflow.add_edge("plan", "generate")
+    workflow.add_edge("generate", "validate")
+    workflow.add_edge("validate", "assemble")
+    workflow.add_edge("assemble", "finalize")
+    workflow.add_edge("finalize", END)
+    
     return workflow.compile()
 
 
@@ -348,33 +242,43 @@ graph = build_graph()
 # For testing
 if __name__ == "__main__":
     import asyncio
-
+    from dotenv import load_dotenv
+    
     async def test_agent():
+        # Load env vars for testing
+        load_dotenv()
+        
         # Test with mock input
-        initial_state = {
-            "task": "Generate a proposal for AWS migration",
-            "account_data": {
-                "name": "TechCorp",
+        initial_state = initialize_state(
+            task="Generate a comprehensive proposal for migrating our infrastructure to AWS. We need to modernize our legacy systems and improve scalability.",
+            account_data={
+                "name": "TechCorp Industries",
                 "id": "acc-123",
-                "contact": "Jane Smith",
+                "contact": "Jane Smith, CTO",
                 "stage": "Evaluation",
                 "value": "$150,000"
             },
-            "document_id": str(uuid.uuid4()),
-            "user_id": "test-user-123",
-            "thread_id": "test-thread-123",
-            "run_id": "test-run-123"
-        }
+            document_id=str(uuid.uuid4()),
+            user_id="test-user-123"
+        )
 
+        print("[Test] Starting enhanced document generation workflow...")
         result = await graph.ainvoke(initial_state)
-        print("\nFinal state:")
+        
+        print("\n[Test] Final Results:")
         print(f"Document ID: {result.get('document_id')}")
         print(f"Complete: {result.get('complete')}")
-        print("\nDocument Content:")
-        print(result.get('document_content', '')[:500] + "...")
-
-    # Load env vars for testing
-    from dotenv import load_dotenv
-    load_dotenv()
+        print(f"Stages Completed: {result.get('completed_stages', [])}")
+        print(f"Quality Score: {result.get('overall_quality_score', 0):.2f}")
+        print(f"Total Words: {len(result.get('document_content', '').split())}")
+        print(f"Errors: {result.get('errors', [])}")
+        
+        if result.get('stage_timings'):
+            print("\nStage Timings:")
+            for stage, duration in result['stage_timings'].items():
+                print(f"  - {stage}: {duration:.2f}s")
+        
+        print("\nDocument Preview:")
+        print(result.get('document_content', '')[:1000] + "...")
 
     asyncio.run(test_agent())
