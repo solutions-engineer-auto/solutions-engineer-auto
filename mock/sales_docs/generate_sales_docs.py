@@ -149,6 +149,15 @@ def generate_documents_sequentially(scenario: Dict[str, Any]):
         logger.error(f"Data after normalization attempt: {actual_scenario}")
         raise ValueError("Invalid scenario data structure received from LLM that could not be normalized.")
 
+    # Further normalize vendor and prospect data, as they might also be schemas.
+    if isinstance(actual_scenario.get('vendor'), dict) and 'properties' in actual_scenario['vendor']:
+        logger.info("Found nested 'properties' in vendor data, normalizing.")
+        actual_scenario['vendor'] = actual_scenario['vendor']['properties']
+    
+    if isinstance(actual_scenario.get('prospect'), dict) and 'properties' in actual_scenario['prospect']:
+        logger.info("Found nested 'properties' in prospect data, normalizing.")
+        actual_scenario['prospect'] = actual_scenario['prospect']['properties']
+
     logger.debug(f"Normalized scenario data successfully. Vendor: {actual_scenario.get('vendor', {}).get('name')}")
 
     # Initialize the context with the scenario details
@@ -158,6 +167,8 @@ def generate_documents_sequentially(scenario: Dict[str, Any]):
     print("="*80)
     print("GENERATING MOCK SALES DOCUMENTS")
     print("="*80)
+    logger.info(f"Using Vendor: {actual_scenario.get('vendor')}")
+    logger.info(f"Using Prospect: {actual_scenario.get('prospect')}")
     print(f"Vendor: {actual_scenario['vendor']['name']} ({actual_scenario['vendor']['solution_name']})")
     print(f"Prospect: {actual_scenario['prospect']['name']} ({actual_scenario['prospect']['industry']})")
     print("-" * 80 + "\n")
