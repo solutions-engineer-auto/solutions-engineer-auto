@@ -130,6 +130,29 @@ For production use, deploy the agent to LangGraph Cloud:
 3. **Update environment variables**
    Add your Supabase credentials to `.env.local`
 
+
+
+## Mock Data Generator
+
+### Setup
+
+```bash
+python -m ".venv"
+source .venv/bin/activate  # use activate.fish for fish shell
+pip install -r requirements.txt
+```
+
+### Generate
+
+```bash
+python mock/sales_docs/generate_sales_docs.py
+```
+
+Files will appear in a timestamped folder within the `mock/sales_docs/generated_documents` folder
+
+
+
+
 ## Environment Variables
 
 ### Frontend (.env.local)
