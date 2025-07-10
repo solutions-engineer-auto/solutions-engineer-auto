@@ -1,6 +1,7 @@
 """
 Enhanced Document Generation Agent with Supabase Integration
 This agent writes directly to Supabase for realtime updates.
+Version: 1.0.2 - Force restart to clear hanging process
 """
 
 import os
