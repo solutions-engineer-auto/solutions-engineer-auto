@@ -6,6 +6,7 @@ import datetime
 from pathlib import Path
 from typing import List, Dict, Any
 
+from faker import Faker
 from dotenv import load_dotenv
 
 from langchain_openai import ChatOpenAI
@@ -73,15 +74,24 @@ def get_document_generation_chain(doc_name: str, doc_description: str):
     This chain takes the entire history of the interaction as context.
     """
     logger.info(f"Creating document generation chain for: '{doc_name}'")
+    
+    # Updated system prompt to enforce using specific, consistent details.
+    system_prompt = (
+        "You are a solutions engineer responsible for creating sales and internal documents. "
+        "Your task is to generate a specific document based on the provided context."
+        "\n\n## CRITICAL INSTRUCTIONS:\n"
+        "1. **Use Specific Details:** You MUST use the concrete names, numbers, dates, and other details provided in the `details` section of the context. Refer to it for the current date, contact persons, pricing, company names, etc.\n"
+        "2. **No Placeholders:** Do NOT use placeholders like '[Insert Date]', '[Insert Name]', '[Contact Person]', or '$X,XXX'. Fill in all values using the provided context details.\n"
+        "3. **Be Consistent:** The details are provided to ensure consistency across all documents. Use them exactly as given.\n"
+        "4. **Be Professional:** Your tone should be professional, clear, and detailed, appropriate for a B2B sales context."
+        "\n\n## Document to Create:\n"
+        "**Document Name:** {doc_name}\n"
+        "**Description:** {doc_description}\n\n"
+        "## Full Context for Generation:\n{context}"
+    )
+
     prompt = ChatPromptTemplate.from_messages([
-        ("system",
-         "You are a solutions engineer responsible for creating sales and internal documents. "
-         "Your task is to generate a specific document based on the provided context, which includes vendor info, "
-         "prospect info, and any previously generated documents. Be professional, clear, and detailed in your response."
-         "\n\n## Document to Create:\n"
-         "**Document Name:** {doc_name}\n"
-         "**Description:** {doc_description}\n\n"
-         "## Full Context for Generation:\n{context}"),
+        ("system", system_prompt),
         ("human", "Now, please generate the content for the '{doc_name}' document.")
     ])
 
@@ -117,6 +127,7 @@ def generate_documents_sequentially(scenario: Dict[str, Any]):
     Generates a sequence of documents, feeding the context from one to the next.
     """
     logger.info("Starting sequential document generation process.")
+    fake = Faker()
 
     # Create a unique output directory for this run using a timestamp.
     run_timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -168,6 +179,46 @@ def generate_documents_sequentially(scenario: Dict[str, Any]):
 
     logger.debug(f"Normalized scenario data successfully. Vendor: {actual_scenario.get('vendor', {}).get('name')}")
 
+    # Generate consistent, dynamic details for this run to be used across all docs.
+    dynamic_details = {
+        "current_date": datetime.datetime.now().strftime("%B %d, %Y"),
+        "vendor_contact": {
+            "name": fake.name(),
+            "email": fake.email(),
+            "title": "Senior Solutions Engineer"
+        },
+        "prospect_contact": {
+            "name": fake.name(),
+            "email": fake.email(),
+            "title": "Director of Operations"
+        },
+        "project_team": {
+            "project_manager": {"name": fake.name(), "email": fake.email()},
+            "technical_lead": {"name": fake.name(), "email": fake.email()},
+            "integration_specialist": {"name": fake.name(), "email": fake.email()}
+        },
+        "support_contact": {
+            "name": fake.name(),
+            "email": f"support@{actual_scenario['vendor']['name'].lower().replace(' ', '').split(',')[0]}.com",
+            "phone": fake.phone_number()
+        },
+        "pricing": {
+            "license_per_user_per_month": random.randint(50, 250),
+            "number_of_users": random.randint(20, 200),
+            "implementation_fee": random.randint(5000, 50000),
+            "support_tier": random.choice(["Standard", "Premium", "Enterprise"]),
+            "discount_percentage": random.randint(5, 20)
+        },
+        "timeline": {
+            "poc_weeks": 2,
+            "implementation_weeks": random.randint(6, 16)
+        },
+        "competitor": {
+            "name": fake.company() + " " + random.choice(["Solutions", "Dynamics", "Innovations", "Tech"])
+        }
+    }
+    logger.info(f"Generated dynamic details for this run: {dynamic_details}")
+
     # Initialize the context with the scenario details
     context = {"scenario": actual_scenario, "documents": {}}
     logger.debug("Initialized context with scenario and empty documents dict.")
@@ -195,6 +246,7 @@ def generate_documents_sequentially(scenario: Dict[str, Any]):
         # and the full text of only the most recent document.
         compacted_context = {
             "scenario": context["scenario"],
+            "details": dynamic_details,
             "generated_document_titles": list(context["documents"].keys())
         }
         if context["documents"]:
