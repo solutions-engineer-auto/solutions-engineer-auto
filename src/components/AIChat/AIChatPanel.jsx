@@ -5,32 +5,32 @@ import AIActivityIndicator from './AIActivityIndicator';
 import AIChatInput from './AIChatInput';
 import ConnectionStatus from './ConnectionStatus';
 
-const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, mode, onModeChange, agentThreadId, onThreadCreate, onDocumentGenerated }) => {
+const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, documentId, mode, onModeChange, agentThreadId, onThreadCreate, onDocumentGenerated }) => {
   const messagesEndRef = useRef(null);
   const [isMinimized, setIsMinimized] = useState(false);
   const [panelWidth, setPanelWidth] = useState(400);
   const resizeHandleRef = useRef(null);
   
+  // Call the hook with the proper parameters
+  const chatResult = useAIChat({ 
+    documentId: documentId, 
+    accountData: accountData,
+    onDocumentUpdate: onDocumentGenerated 
+  });
   
-  const {
-    messages,
-    isStreaming,
-    currentActivity,
-    streamingMessage,
-    sendMessage,
-    clearMessages,
-    currentThread,
-    connectionStatus,
-    lastGeneratedDocument
-  } = useAIChat(mode, agentThreadId, onThreadCreate);
+  // Map to expected property names for backward compatibility
+  const messages = chatResult.messages;
+  const isStreaming = chatResult.isStreaming;
+  const currentActivity = chatResult.currentActivity;
+  const streamingMessage = null; // Not in current implementation
+  const sendMessage = chatResult.sendMessage;
+  const clearMessages = chatResult.clearMessages;
+  const currentThread = null; // Not in current implementation
+  const connectionStatus = chatResult.connectionStatus;
+  const lastGeneratedDocument = null; // Not in current implementation
+  const generationProgress = chatResult.generationProgress;
   
-  // Automatically replace document when a new one is generated
-  useEffect(() => {
-    if (lastGeneratedDocument && onDocumentGenerated) {
-      // Auto-replace document with generated content
-      onDocumentGenerated(lastGeneratedDocument.content);
-    }
-  }, [lastGeneratedDocument, onDocumentGenerated]);
+  // Document replacement is now handled by the onDocumentUpdate callback in useAIChat
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -75,9 +75,9 @@ const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, mode, onMo
   const handleSendMessage = useCallback((message) => {
     // Add context about the document if it's the first message
     if (messages.length === 0 && documentContent && mode === 'mock') {
-      sendMessage(`I'm working on a document. Here's the current content for context:\n\n${documentContent}\n\nMy question: ${message}`, accountData);
+      sendMessage(`I'm working on a document. Here's the current content for context:\n\n${documentContent}\n\nMy question: ${message}`, mode, accountData);
     } else {
-      sendMessage(message, accountData);
+      sendMessage(message, mode, accountData);
     }
   }, [messages.length, documentContent, sendMessage, mode, accountData]);
 

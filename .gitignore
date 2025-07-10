@@ -22,12 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-<<<<<<< HEAD
 
 # credentials
 .env
-||||||| parent of de4fa22 (Initial langgraph integration)
-=======
-.env
 .env.local
->>>>>>> de4fa22 (Initial langgraph integration)
+
+# python
+
+.venv
+agent/venv/

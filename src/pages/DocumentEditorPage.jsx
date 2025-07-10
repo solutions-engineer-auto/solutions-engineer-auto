@@ -233,15 +233,23 @@ function DocumentEditorPage() {
             setIsDirty(false)
         }
         
-        // Fetch account data
+        // Set account data - always include the ID from URL params
         try {
           const accountResponse = await fetch(`/api/accounts/${accountId}`)
           if (accountResponse.ok) {
             const accData = await accountResponse.json()
-            setAccountData(accData)
+            // Ensure the ID is always set from URL params
+            const accountDataToSet = { ...accData, id: accountId };
+            setAccountData(accountDataToSet)
+          } else {
+            // If fetch fails, still set accountData with the ID
+            const fallbackData = { id: accountId, name: 'Account' };
+            setAccountData(fallbackData)
           }
         } catch (error) {
-          console.log('Could not fetch account data:', error)
+          // Even on error, set accountData with the ID from URL
+          const errorFallbackData = { id: accountId, name: 'Account' };
+          setAccountData(errorFallbackData)
         }
       } catch (error) {
         console.error('Failed to fetch document:', error)
@@ -359,6 +367,8 @@ function DocumentEditorPage() {
       window.document.removeEventListener('keydown', handleKeyDown)
     }
   }, [editor, handleSave, setShowAIModal, setSelectedText, setShowAIChat])
+
+  // Removed document subscription - content now flows only through chat messages
 
   const handleStatusChange = async (newStatus) => {
     if (newStatus === 'finalized' && !confirm('Are you sure you want to finalize this document? This action cannot be undone.')) {
@@ -892,7 +902,8 @@ function DocumentEditorPage() {
         isOpen={showAIChat}
         onClose={() => setShowAIChat(false)}
         documentContent={editor?.getText() || ''}
-        accountData={accountData}
+        accountData={accountData || { id: accountId, name: 'Loading...' }}
+        documentId={docId}
         mode={mode}
         onModeChange={setMode}
         agentThreadId={agentThreadId}
