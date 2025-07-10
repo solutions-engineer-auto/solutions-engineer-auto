@@ -14,6 +14,8 @@ import ExportModal from '../components/ExportModal'
 import { supabase } from '../supabaseClient'
 import AgentActivity from '../components/AgentActivity'
 import { convertMarkdownToHtml } from '../utils/markdownToHtml'
+import { DiffExtension } from '../extensions/DiffExtension'
+import { DIFF_ENABLED } from '../utils/featureFlags'
 
 function DocumentEditorPage() {
   const { accountId, docId } = useParams()
@@ -35,6 +37,37 @@ function DocumentEditorPage() {
   const [agentThreadId, setAgentThreadId] = useState(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [accountData, setAccountData] = useState(null)
+  
+  // Diff system states
+  const [showDiffUI, setShowDiffUI] = useState(false)
+  const [pendingChanges, setPendingChanges] = useState(0)
+
+  // Handle AI edit request from DiffExtension
+  const handleAIEditRequest = useCallback(({ quarantine }) => {
+    console.log('[DiffExtension] AI edit requested:', quarantine)
+    
+    // Store the selection for AI processing
+    setSelectedText(quarantine.content)
+    
+    // TODO: In Phase 3, this will trigger the actual AI API call
+    // For now, just show the AI modal or chat
+    setShowAIModal(true)
+    
+    // Store quarantine zone for later use
+    window.tempQuarantineZone = quarantine
+  }, [])
+
+  // Handle accepting a change
+  const handleAcceptChange = useCallback((changeId) => {
+    console.log('[DiffExtension] Change accepted:', changeId)
+    // The extension handles the actual change application
+  }, [])
+
+  // Handle rejecting a change
+  const handleRejectChange = useCallback((changeId) => {
+    console.log('[DiffExtension] Change rejected:', changeId)
+    // The extension handles the actual change removal
+  }, [])
 
   // Initialize TipTap editor
   const editor = useEditor({
@@ -89,8 +122,16 @@ function DocumentEditorPage() {
       TextAlign.configure({
         types: ['heading', 'paragraph'],
         alignments: ['left', 'center', 'right', 'justify']
-      })
-    ],
+      }),
+      // Add DiffExtension if feature is enabled
+      DIFF_ENABLED ? DiffExtension.configure({
+        onRequestEdit: handleAIEditRequest,
+        onAcceptChange: handleAcceptChange,
+        onRejectChange: handleRejectChange,
+        enableKeyboardShortcuts: true,
+        defaultMode: 'paragraph'
+      }) : null
+    ].filter(Boolean),
     content: initialContent || '',
     onUpdate: () => {
       setIsDirty(true)
@@ -105,9 +146,39 @@ function DocumentEditorPage() {
       if (initialContent) {
         editor.commands.setContent(initialContent)
       }
+      
+      // Subscribe to diff change events if enabled
+      if (DIFF_ENABLED && editor.storage.diffV2) {
+        const changeManager = editor.storage.diffV2.changeManager
+        if (changeManager) {
+          changeManager.subscribe(({ event, data }) => {
+            if (event === 'change-added') {
+              setPendingChanges(prev => prev + 1)
+              setShowDiffUI(true)
+            } else if (event === 'change-updated') {
+              if (data.status !== 'pending') {
+                setPendingChanges(prev => Math.max(0, prev - 1))
+              }
+            }
+          })
+        }
+      }
     },
     autofocus: 'end'
   })
+
+  // Expose editor instance for debugging/testing
+  useEffect(() => {
+    if (editor && !editor.isDestroyed) {
+      window.editor = editor
+      console.log('[DocumentEditor] Editor exposed as window.editor for debugging')
+    }
+    return () => {
+      if (window.editor === editor) {
+        window.editor = null
+      }
+    }
+  }, [editor])
 
   // Fetch document and account data on mount
   useEffect(() => {
@@ -269,6 +340,15 @@ function DocumentEditorPage() {
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'L') {
         e.preventDefault()
         setShowAIChat(prev => !prev)
+      }
+      
+      // Cmd+D or Ctrl+D to toggle diff mode (if feature is enabled)
+      if (DIFF_ENABLED && (e.metaKey || e.ctrlKey) && e.key === 'd') {
+        e.preventDefault()
+        if (editor) {
+          editor.commands.toggleDiffMode()
+          setShowDiffUI(prev => !prev)
+        }
       }
     }
 
