@@ -9,7 +9,9 @@ import json
 import asyncio
 import uuid
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, List
+import logging
+from collections import defaultdict
 
 # Load environment variables FIRST before any other imports
 from dotenv import load_dotenv
@@ -24,6 +26,14 @@ from supabase import create_client, Client
 # Import your existing agent (after env vars are loaded)
 from agent import graph
 from state import AgentState, initialize_state
+from constants.events import EventTypes
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger("LocalAgent")
 
 # Initialize Supabase client
 supabase: Client = create_client(
@@ -43,13 +53,57 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Global event store for real-time monitoring
+event_store: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+active_runs: Dict[str, Dict[str, Any]] = {}
+
 # Add request logging middleware
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    print(f"[Local Server] {request.method} {request.url.path}")
+    logger.info(f"{request.method} {request.url.path}")
     response = await call_next(request)
-    print(f"[Local Server] Response status: {response.status_code}")
+    logger.info(f"Response status: {response.status_code}")
     return response
+
+
+def log_agent_event(run_id: str, event_type: str, content: str, data: Dict[str, Any] = None):
+    """Log an agent event for monitoring"""
+    event = {
+        "timestamp": datetime.now().isoformat(),
+        "event_type": event_type,
+        "content": content,
+        "data": data or {}
+    }
+    
+    # Store in memory for retrieval
+    event_store[run_id].append(event)
+    
+    # Log to console with color coding
+    level_map = {
+        "start": logging.INFO,
+        "complete": logging.INFO,
+        "error": logging.ERROR,
+        "workflow_start": logging.INFO,
+        "workflow_complete": logging.INFO,
+        "retrieval_start": logging.DEBUG,
+        "retrieval_complete": logging.DEBUG,
+        "analysis_start": logging.DEBUG,
+        "analysis_complete": logging.DEBUG,
+        "planning_start": logging.DEBUG,
+        "planning_complete": logging.DEBUG,
+        "generation_start": logging.DEBUG,
+        "generation_complete": logging.DEBUG,
+        "validation_start": logging.DEBUG,
+        "validation_complete": logging.DEBUG,
+        "assembly_start": logging.DEBUG,
+        "assembly_complete": logging.DEBUG,
+    }
+    
+    log_level = level_map.get(event_type, logging.INFO)
+    logger.log(log_level, f"[{run_id}] {event_type}: {content}")
+    
+    if data:
+        logger.debug(f"[{run_id}] Data: {json.dumps(data, indent=2)}")
 
 
 @app.get("/health")
@@ -82,13 +136,41 @@ async def list_assistants():
     ]
 
 
+@app.get("/runs/{run_id}/events")
+async def get_run_events(run_id: str):
+    """Get all events for a specific run"""
+    return {
+        "run_id": run_id,
+        "status": active_runs.get(run_id, {}).get("status", "unknown"),
+        "events": event_store.get(run_id, [])
+    }
+
+
+@app.get("/runs/active")
+async def get_active_runs():
+    """Get all currently active runs"""
+    return {
+        "active_runs": [
+            {
+                "run_id": run_id,
+                "document_id": info.get("document_id"),
+                "status": info.get("status"),
+                "start_time": info.get("start_time").isoformat() if info.get("start_time") else None,
+                "duration": (datetime.now() - info.get("start_time")).total_seconds() if info.get("start_time") else 0
+            }
+            for run_id, info in active_runs.items()
+        ]
+    }
+
+
 @app.post("/threads/{thread_id}/runs")
 async def create_run(thread_id: str, request: Request):
     """Create a new run and execute the agent"""
-    print(f"[Local Server] POST /threads/{thread_id}/runs called")
     body = await request.json()
-    print(f"[Local Server] Request body: {json.dumps(body, indent=2)}")
     run_id = f"run-{uuid.uuid4().hex[:12]}"
+    
+    logger.info(f"Creating run {run_id} for thread {thread_id}")
+    logger.debug(f"Request body: {json.dumps(body, indent=2)}")
     
     # Store run info for later retrieval
     run_info = {
@@ -104,8 +186,12 @@ async def create_run(thread_id: str, request: Request):
     # Extract input data
     input_data = body.get("input", {})
     
-    # Log the input data for debugging
-    print(f"[Local Server] Creating run with input: {json.dumps(input_data, indent=2)}")
+    # Log the input data
+    log_agent_event(run_id, "run_created", f"Run created for document generation", {
+        "thread_id": thread_id,
+        "task_preview": input_data.get("task", "")[:200],
+        "account": input_data.get("account_data", {}).get("name", "Unknown")
+    })
     
     # Create initial state for the agent
     initial_state = initialize_state(
@@ -118,33 +204,42 @@ async def create_run(thread_id: str, request: Request):
     )
     
     # Execute the agent asynchronously (fire and forget)
-    print(f"[Local Server] Creating async task for run: {run_id}")
+    log_agent_event(run_id, "task_created", "Creating async task for agent execution")
     task = asyncio.create_task(execute_agent(initial_state, run_id))
     
     # Add error logging for the task
     def task_done_callback(future):
         try:
             future.result()
-            print(f"[Local Server] Task completed successfully for run: {run_id}")
+            log_agent_event(run_id, "task_complete", "Async task completed successfully")
         except Exception as e:
-            print(f"[Local Server] Task failed for run {run_id}: {e}")
+            log_agent_event(run_id, "task_error", f"Async task failed: {str(e)}")
             import traceback
-            traceback.print_exc()
+            logger.error(f"Task traceback:\n{traceback.format_exc()}")
     
     task.add_done_callback(task_done_callback)
     
     # Return immediately with run info
     run_info["status"] = "running"
-    print(f"[Local Server] Returning run info: {json.dumps(run_info, indent=2)}")
+    logger.info(f"Returning run info for {run_id}")
     return run_info
 
 
 async def execute_agent(state: AgentState, run_id: str):
-    """Execute the agent in the background"""
+    """Execute the agent in the background with comprehensive logging"""
     try:
-        print(f"[Local Server] Executing agent for run: {run_id}")
-        print(f"[Local Server] Document ID: {state['document_id']}")
-        print(f"[Local Server] Task: {state['task'][:100]}...")
+        # Mark run as active
+        active_runs[run_id] = {
+            "start_time": datetime.now(),
+            "document_id": state['document_id'],
+            "status": "running"
+        }
+        
+        log_agent_event(run_id, "start", f"Starting agent execution", {
+            "document_id": state['document_id'],
+            "task": state['task'][:200],
+            "account": state.get('account_data', {}).get('name', 'Unknown')
+        })
         
         # Ensure the document exists in the database first
         try:
@@ -152,50 +247,64 @@ async def execute_agent(state: AgentState, run_id: str):
             check_result = supabase.table("documents").select("id").eq("id", state["document_id"]).execute()
             
             if not check_result.data:
-                print(f"[Local Server] Document {state['document_id']} doesn't exist, creating it...")
+                log_agent_event(run_id, "document_create", f"Creating document record", {
+                    "document_id": state['document_id']
+                })
                 
                 # Get account_id from state
                 account_id = state["account_data"].get("id")
                 if not account_id:
-                    print(f"[Local Server] ERROR: No account_id provided")
+                    log_agent_event(run_id, "error", "No account_id provided")
                     raise Exception("Account ID is required")
                 
                 # Create the document
                 create_result = supabase.table("documents").insert({
                     "id": state["document_id"],
                     "title": f"AI Generated Document",
-                    "account_id": account_id,  # Can be None
+                    "account_id": account_id,
                     "author_id": state["user_id"],
                     "generation_status": "generating",
                     "generation_started_at": datetime.now().isoformat(),
                     "created_at": datetime.now().isoformat(),
                     "updated_at": datetime.now().isoformat()
                 }).execute()
-                print(f"[Local Server] Document created successfully")
+                log_agent_event(run_id, "document_created", "Document record created successfully")
             else:
-                print(f"[Local Server] Document {state['document_id']} already exists")
+                log_agent_event(run_id, "document_exists", "Document already exists")
                 
         except Exception as doc_error:
-            print(f"[Local Server] Error ensuring document exists: {doc_error}")
+            log_agent_event(run_id, "error", f"Error ensuring document exists: {doc_error}")
             # Continue anyway - the agent will handle it
         
         # Run the agent
-        print(f"[Local Server] About to invoke graph for run: {run_id}")
+        log_agent_event(run_id, "workflow_start", "Starting LangGraph workflow")
+        
         result = await graph.ainvoke(state)
         
-        print(f"[Local Server] Agent execution complete for run: {run_id}")
-        print(f"[Local Server] Document generated: {len(result.get('document_content', ''))} characters")
-        print(f"[Local Server] Result has errors: {result.get('errors', [])}")
-        print(f"[Local Server] Result is complete: {result.get('complete', False)}")
+        # Stop monitoring
+        if run_id in active_runs:
+            del active_runs[run_id]
         
-        # Log what we're returning
+        # Log completion
+        log_agent_event(run_id, "workflow_complete", "Agent execution complete", {
+            "document_length": len(result.get('document_content', '')),
+            "errors": result.get('errors', []),
+            "completed_stages": result.get('completed_stages', []),
+            "total_duration": (datetime.now() - active_runs.get(run_id, {}).get('start_time', datetime.now())).total_seconds()
+        })
+        
+        # Log document preview
         if result.get('document_content'):
-            print(f"[Local Server] Document preview: {result['document_content'][:200]}...")
+            log_agent_event(run_id, EventTypes.DOCUMENT_READY, "Document generated successfully", {
+                "preview": result['document_content'][:500] + "..."
+            })
         
     except Exception as e:
-        print(f"[Local Server] Error executing agent for run {run_id}: {e}")
+        log_agent_event(run_id, "error", f"Critical error: {str(e)}")
+        if run_id in active_runs:
+            active_runs[run_id]["status"] = "failed"
         import traceback
-        traceback.print_exc()
+        logger.error(f"Traceback for run {run_id}:\n{traceback.format_exc()}")
 
 
 @app.post("/runs/stream")
@@ -298,14 +407,24 @@ if __name__ == "__main__":
     missing = [var for var in required_vars if not os.getenv(var)]
     
     if missing:
-        print(f"[Local Server] ERROR: Missing environment variables: {', '.join(missing)}")
-        print("[Local Server] Please create a .env file in the agent directory with these variables")
+        logger.error(f"Missing environment variables: {', '.join(missing)}")
+        logger.error("Please create a .env file in the agent directory with these variables")
         exit(1)
     
     # Run the server
     port = int(os.getenv("LANGGRAPH_LOCAL_PORT", "8123"))
-    print(f"[Local Server] Starting LangGraph local server on port {port}")
-    print(f"[Local Server] Vite should proxy to http://localhost:{port}")
+    
+    print("\n" + "="*60)
+    print("🚀 LangGraph Local Agent Server")
+    print("="*60)
+    print(f"📍 Server URL: http://localhost:{port}")
+    print(f"🤖 Model: {os.getenv('OPENAI_MODEL', 'gpt-4o-mini')}")
+    print(f"📊 Monitoring endpoints:")
+    print(f"   - Active runs: http://localhost:{port}/runs/active")
+    print(f"   - Run events: http://localhost:{port}/runs/{{run_id}}/events")
+    print(f"🔧 Health check: http://localhost:{port}/health")
+    print("="*60)
+    print("📝 Agent activity will be logged below:\n")
     
     uvicorn.run(
         app,

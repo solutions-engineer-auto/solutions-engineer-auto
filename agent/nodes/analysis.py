@@ -4,7 +4,9 @@ Context analysis node - analyzes requirements and determines document type
 from datetime import datetime
 from langchain_openai import ChatOpenAI
 from state import AgentState
+from utils.prompts import AGENT_PERSONAS, get_reasoning_steps, get_context_adjustments, get_few_shot_examples
 from utils.supabase_client import supabase_manager
+from constants.events import EventTypes
 import os
 import json
 
@@ -25,8 +27,8 @@ async def analyze_context(state: AgentState) -> AgentState:
     # Log analysis start
     await supabase_manager.log_event(
         document_id=state["document_id"],
-        event_type="analysis_start",
-        content="Analyzing task requirements and context",
+        event_type=EventTypes.ANALYSIS_STARTED,
+        content="Analyzing requirements and determining document type",
         thread_id=state["thread_id"],
         run_id=state["run_id"]
     )
@@ -48,9 +50,6 @@ Additional Context:
 
     if state.get("selected_context"):
         context_info += f"\n\nRelevant Documents Found:\n{state['selected_context']}"
-    
-    # Import persona enhancement
-    from utils.prompts import AGENT_PERSONAS, get_reasoning_steps, get_context_adjustments, get_few_shot_examples
     
     persona = AGENT_PERSONAS["business_analyst"]
     
@@ -115,18 +114,18 @@ Remember: Your 20 years of experience helps you see what others miss. Look for t
             
             state["target_audience"] = analysis.get("target_audience", "General audience")
             state["key_requirements"] = analysis.get("key_requirements", [])
+            state["hidden_concerns"] = analysis.get("hidden_concerns", [])
+            state["strategic_positioning"] = analysis.get("strategic_positioning", "")
             
             # Log successful analysis
             await supabase_manager.log_event(
                 document_id=state["document_id"],
-                event_type="analysis_complete",
-                content="Successfully analyzed task requirements",
+                event_type=EventTypes.ANALYSIS_COMPLETED,
+                content=f"Analyzed requirements for {analysis.get('document_type', 'document')} targeting {analysis.get('target_audience', 'audience')}",
                 data={
                     "document_type": analysis.get("document_type"),
                     "target_audience": analysis.get("target_audience"),
-                    "requirements_count": len(analysis.get("key_requirements", [])),
-                    "analysis_results": analysis,
-                    "duration_seconds": (datetime.now() - start_time).total_seconds()
+                    "requirements_count": len(analysis.get("key_requirements", []))
                 },
                 thread_id=state["thread_id"],
                 run_id=state["run_id"]
@@ -136,7 +135,18 @@ Remember: Your 20 years of experience helps you see what others miss. Look for t
             raise ValueError("Could not parse analysis response")
             
     except Exception as e:
-        print(f"[Analysis] Error analyzing context: {e}")
+        # Log error but continue with default analysis
+        import traceback
+        traceback.print_exc()
+        
+        # Log analysis failure
+        await supabase_manager.log_event(
+            document_id=state["document_id"],
+            event_type=EventTypes.ANALYSIS_FAILED,
+            content=f"Analysis failed: {str(e)}",
+            thread_id=state["thread_id"],
+            run_id=state["run_id"]
+        )
         
         # Set defaults on error
         state["document_outline"] = {
@@ -153,19 +163,9 @@ Remember: Your 20 years of experience helps you see what others miss. Look for t
             "Consider budget and timeline",
             "Identify risks and mitigation"
         ]
+        state["hidden_concerns"] = []
+        state["strategic_positioning"] = "Position as the optimal solution"
         
-        # Log error
-        await supabase_manager.log_event(
-            document_id=state["document_id"],
-            event_type="analysis_error",
-            content="Error during context analysis, using defaults",
-            data={
-                "error": str(e),
-                "duration_seconds": (datetime.now() - start_time).total_seconds()
-            },
-            thread_id=state["thread_id"],
-            run_id=state["run_id"]
-        )
         
         state["errors"] = state.get("errors", []) + [f"Analysis error: {str(e)}"]
     

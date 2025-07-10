@@ -294,6 +294,50 @@ def get_validation_criteria(document_type: str) -> dict:
     return criteria.get(document_type, criteria["proposal"])
 
 
+def get_mermaid_enhancement(section_type: str, content_hints: str = "") -> str:
+    """Get mermaid diagram enhancement for section generation"""
+    from .mermaid_generator import detect_diagram_opportunity, get_mermaid_prompt_enhancement
+    
+    print(f"[Prompts] get_mermaid_enhancement called for section: {section_type}")
+    print(f"[Prompts] Content hints preview: {content_hints[:100]}...")
+    
+    # Create a temporary context for detection
+    temp_context = {
+        "section_type": section_type,
+        "content": content_hints
+    }
+    
+    # Detect if this section would benefit from a diagram
+    diagram_suggestion = detect_diagram_opportunity(content_hints, section_type, temp_context)
+    
+    if diagram_suggestion and diagram_suggestion['confidence'] > 0.5:
+        print(f"[Prompts] Diagram suggested: {diagram_suggestion['suggested_type']} with confidence {diagram_suggestion['confidence']}")
+        return get_mermaid_prompt_enhancement(
+            diagram_suggestion['suggested_type'],
+            temp_context
+        )
+    
+    # Default enhancement for sections that commonly benefit from diagrams
+    diagram_friendly_sections = [
+        "technical", "architecture", "implementation", "process", 
+        "workflow", "integration", "timeline", "roadmap"
+    ]
+    
+    if any(keyword in section_type.lower() for keyword in diagram_friendly_sections):
+        return """
+
+Consider including Mermaid diagrams where they add clarity:
+- Flowcharts for processes: ```mermaid\nflowchart TD\n    A[Start] --> B[Process]\n```
+- Sequence diagrams for interactions: ```mermaid\nsequenceDiagram\n    A->>B: Request\n```
+- Gantt charts for timelines: ```mermaid\ngantt\n    title Timeline\n```
+- Architecture diagrams for systems: ```mermaid\nclassDiagram\n    ComponentA --> ComponentB\n```
+
+Only include diagrams that enhance understanding, not for decoration.
+"""
+    
+    return ""
+
+
 def get_few_shot_examples(task_type: str) -> str:
     """Provide few-shot examples for better outputs"""
     

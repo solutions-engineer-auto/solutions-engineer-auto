@@ -90,8 +90,14 @@ def get_document_generation_chain(doc_name: str, doc_description: str):
         "## Full Context for Generation:\n{context}"
     )
 
+    # Append the critical instruction to the system prompt
+    final_system_prompt = system_prompt + (
+        "\n\nCRITICAL: Return ONLY the document content. Do not include any introductory text, "
+        "meta-commentary, or explanations. Start directly with the document content."
+    )
+    
     prompt = ChatPromptTemplate.from_messages([
-        ("system", system_prompt),
+        ("system", final_system_prompt),
         ("human", "Now, please generate the content for the '{doc_name}' document.")
     ])
 

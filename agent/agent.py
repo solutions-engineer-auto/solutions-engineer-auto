@@ -14,13 +14,15 @@ from langgraph.graph import StateGraph, END
 
 # Import our modular components
 from state import AgentState, initialize_state
-from nodes.retrieval import retrieve_documents
+from nodes.account_fetch import fetch_account_data
+from nodes.retrieval import retrieve_and_score_documents
 from nodes.analysis import analyze_context
 from nodes.planning import plan_document
 from nodes.generation import generate_sections
 from nodes.validation import validate_document
 from nodes.assembly import assemble_and_polish
 from utils.supabase_client import supabase_manager
+from constants.events import EventTypes
 
 # Validate required environment variables
 required_vars = {
@@ -100,7 +102,7 @@ async def initialize_document(state: AgentState) -> AgentState:
     # Log workflow start
     await supabase_manager.log_event(
         document_id=state["document_id"],
-        event_type="workflow_start",
+        event_type=EventTypes.WORKFLOW_STARTED,
         content="Starting enhanced document generation workflow",
         data={
             "account_name": state["account_data"].get("name"),
@@ -136,7 +138,7 @@ async def finalize_document(state: AgentState) -> AgentState:
     
     await supabase_manager.log_event(
         document_id=state["document_id"],
-        event_type="workflow_complete",
+        event_type=EventTypes.WORKFLOW_COMPLETED,
         content="Enhanced document generation workflow complete",
         data={
             "total_duration_seconds": total_duration,
@@ -152,7 +154,7 @@ async def finalize_document(state: AgentState) -> AgentState:
     # Log final content as event (for real-time updates)
     await supabase_manager.log_event(
         document_id=state["document_id"],
-        event_type="document_ready",
+        event_type=EventTypes.DOCUMENT_READY,
         content="Document is ready for review",
         data={
             "content": state.get("document_content", "")
@@ -211,7 +213,8 @@ def build_graph():
     
     # Add all nodes to the workflow
     workflow.add_node("initialize", initialize_document)
-    workflow.add_node("retrieve", handle_workflow_with_timeout(retrieve_documents))
+    workflow.add_node("fetch_account", handle_workflow_with_timeout(fetch_account_data))
+    workflow.add_node("retrieve", handle_workflow_with_timeout(retrieve_and_score_documents))
     workflow.add_node("analyze", handle_workflow_with_timeout(analyze_context))
     workflow.add_node("plan", handle_workflow_with_timeout(plan_document))
     workflow.add_node("generate", handle_workflow_with_timeout(generate_sections))
@@ -223,7 +226,8 @@ def build_graph():
     workflow.set_entry_point("initialize")
     
     # Define the linear flow
-    workflow.add_edge("initialize", "retrieve")
+    workflow.add_edge("initialize", "fetch_account")
+    workflow.add_edge("fetch_account", "retrieve")
     workflow.add_edge("retrieve", "analyze")
     workflow.add_edge("analyze", "plan")
     workflow.add_edge("plan", "generate")

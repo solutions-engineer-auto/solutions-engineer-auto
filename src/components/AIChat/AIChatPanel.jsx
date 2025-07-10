@@ -5,11 +5,14 @@ import AIActivityIndicator from './AIActivityIndicator';
 import AIChatInput from './AIChatInput';
 import ConnectionStatus from './ConnectionStatus';
 
-const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, documentId, mode, onModeChange, agentThreadId, onThreadCreate, onDocumentGenerated }) => {
+const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, documentId, agentThreadId, onThreadCreate, onDocumentGenerated }) => {
   const messagesEndRef = useRef(null);
+  const panelRef = useRef(null);
   const [isMinimized, setIsMinimized] = useState(false);
   const [panelWidth, setPanelWidth] = useState(400);
   const resizeHandleRef = useRef(null);
+  const [isClosing, setIsClosing] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
   
   // Call the hook with the proper parameters
   const chatResult = useAIChat({ 
@@ -76,19 +79,51 @@ const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, documentId
   }, [panelWidth]);
 
   const handleSendMessage = useCallback((message) => {
-    // Add context about the document if it's the first message
-    if (messages.length === 0 && documentContent && mode === 'mock') {
-      sendMessage(`I'm working on a document. Here's the current content for context:\n\n${documentContent}\n\nMy question: ${message}`, mode, accountData);
-    } else {
-      sendMessage(message, mode, accountData);
-    }
-  }, [messages.length, documentContent, sendMessage, mode, accountData]);
+    sendMessage(message, 'agent', accountData);
+  }, [sendMessage, accountData]);
 
-  if (!isOpen) return null;
+  // Handle visibility changes
+  useEffect(() => {
+    if (isOpen && !isVisible) {
+      // Opening
+      setIsVisible(true);
+      setIsClosing(false);
+    } else if (!isOpen && isVisible) {
+      // Closing
+      setIsClosing(true);
+      setTimeout(() => {
+        setIsVisible(false);
+        setIsClosing(false);
+      }, 300); // Match the CSS animation duration
+    }
+  }, [isOpen, isVisible]);
+
+  // Handle closing animation
+  const handleClose = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
+  // Handle Escape key
+  useEffect(() => {
+    if (!isVisible) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        handleClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isVisible, handleClose]);
+
+  if (!isVisible) return null;
 
   return (
     <div 
-      className={`ai-chat-panel ${isMinimized ? 'minimized' : ''}`}
+      ref={panelRef}
+      className={`ai-chat-panel ${isMinimized ? 'minimized' : ''} ${isClosing ? 'closing' : ''}`}
       style={{ width: isMinimized ? 'auto' : `${panelWidth}px` }}
     >
       <div 
@@ -119,7 +154,7 @@ const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, documentId
             {isMinimized ? '◀' : '▶'}
           </button>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="header-button close-button"
             title="Close chat"
           >
@@ -128,26 +163,11 @@ const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, documentId
         </div>
       </div>
 
-      {/* Mode Toggle */}
+      {/* Connection Status */}
       {!isMinimized && (
-        <div className="mode-toggle-container glass-panel">
-          <div className="mode-toggle">
-            <span className="mode-label">Mode:</span>
-            <button
-              onClick={() => onModeChange('mock')}
-              className={`mode-button ${mode === 'mock' ? 'active' : ''}`}
-            >
-              Mock
-            </button>
-            <button
-              onClick={() => onModeChange('agent')}
-              className={`mode-button ${mode === 'agent' ? 'active' : ''}`}
-            >
-              Agent
-            </button>
-          </div>
+        <div className="connection-status-container glass-panel">
           <ConnectionStatus 
-            mode={mode}
+            mode="agent"
             isConnected={connectionStatus.isConnected}
             lastError={connectionStatus.lastError}
             threadId={currentThread}
@@ -166,21 +186,21 @@ const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, documentId
                 <div className="starter-prompts">
                   <button 
                     className="starter-prompt"
-                    onClick={() => handleSendMessage(mode === 'agent' ? "Generate an integration proposal" : "What's the main topic of this document?")}
+                    onClick={() => handleSendMessage("Generate an integration proposal")}
                   >
-                    📄 {mode === 'agent' ? 'Generate proposal' : "What's the main topic?"}
+                    📄 Generate proposal
                   </button>
                   <button 
                     className="starter-prompt"
-                    onClick={() => handleSendMessage(mode === 'agent' ? "Create a technical specification" : "Can you suggest improvements?")}
+                    onClick={() => handleSendMessage("Create a technical specification")}
                   >
-                    ✨ {mode === 'agent' ? 'Create spec' : 'Suggest improvements'}
+                    ✨ Create spec
                   </button>
                   <button 
                     className="starter-prompt"
-                    onClick={() => handleSendMessage(mode === 'agent' ? "Write an implementation guide" : "Help me reorganize this content")}
+                    onClick={() => handleSendMessage("Write an implementation guide")}
                   >
-                    🔄 {mode === 'agent' ? 'Implementation guide' : 'Reorganize content'}
+                    🔄 Implementation guide
                   </button>
                 </div>
               </div>

@@ -3,7 +3,25 @@ import React from 'react';
 const AIActivityIndicator = ({ activity }) => {
   if (!activity) return null;
 
-  const getActivityIcon = (type) => {
+  const getActivityIcon = (activity) => {
+    // Use display metadata if available
+    if (activity.eventData?.display?.icon) {
+      const iconMap = {
+        retrieval: '📖',
+        analysis: '📊',
+        planning: '🗺️',
+        generation: '✨',
+        validation: '✅',
+        assembly: '🔧',
+        workflow: '⚡',
+        error: '⚠️',
+        default: '⚡'
+      };
+      return iconMap[activity.eventData.display.icon] || '⚡';
+    }
+    
+    // Fall back to legacy type-based selection
+    const type = activity.type;
     switch (type) {
       case 'thinking':
         return '🤔';
@@ -25,7 +43,7 @@ const AIActivityIndicator = ({ activity }) => {
   return (
     <div className={`ai-activity-indicator ${activity.type}`}>
       <div className="activity-content">
-        <span className="activity-icon">{getActivityIcon(activity.type)}</span>
+        <span className="activity-icon">{getActivityIcon(activity)}</span>
         <span className="activity-message">{activity.message}</span>
         {activity.type !== 'error' && (
           <div className="activity-dots">

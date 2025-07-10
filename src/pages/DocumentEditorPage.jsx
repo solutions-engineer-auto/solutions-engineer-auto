@@ -12,10 +12,12 @@ import TextStyle from '@tiptap/extension-text-style'
 import AIChatPanel from '../components/AIChat/AIChatPanel'
 import ExportModal from '../components/ExportModal'
 import AIEditModal from '../components/AIEditModal'
+import MermaidInsertModal from '../components/MermaidInsertModal'
 import { supabase } from '../supabaseClient'
 import AgentActivity from '../components/AgentActivity'
 import { convertMarkdownToHtml } from '../utils/markdownToHtml'
 import { DiffExtension } from '../extensions/DiffExtension'
+import { MermaidExtension } from '../extensions/MermaidExtension'
 import { DIFF_ENABLED } from '../utils/featureFlags'
 import { getDirectAISuggestions } from '../services/directAIEditService'
 import { processAIEdits } from '../utils/editProcessor'
@@ -35,9 +37,9 @@ function DocumentEditorPage() {
   const [showAIChat, setShowAIChat] = useState(false)
   const [showAIEditModal, setShowAIEditModal] = useState(false)
   const [selectedTextForEdit, setSelectedTextForEdit] = useState('')
+  const [showMermaidModal, setShowMermaidModal] = useState(false)
   
   // Agent integration states
-  const [mode, setMode] = useState('mock')
   const [agentThreadId, setAgentThreadId] = useState(null)
   const [accountData, setAccountData] = useState(null)
   
@@ -127,6 +129,11 @@ function DocumentEditorPage() {
         types: ['heading', 'paragraph'],
         alignments: ['left', 'center', 'right', 'justify']
       }),
+      // Add MermaidExtension for diagram support
+      MermaidExtension.configure({
+        theme: 'dark',
+        securityLevel: 'loose'
+      }),
       // Add DiffExtension if feature is enabled
       DIFF_ENABLED ? DiffExtension.configure({
         onRequestEdit: handleAIEditRequest,
@@ -175,7 +182,6 @@ function DocumentEditorPage() {
   useEffect(() => {
     if (editor && !editor.isDestroyed) {
       window.editor = editor
-      console.log('[DocumentEditor] Editor exposed as window.editor for debugging')
     }
     return () => {
       if (window.editor === editor) {
@@ -358,7 +364,10 @@ function DocumentEditorPage() {
       // Cmd+Shift+L or Ctrl+Shift+L for AI Chat
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'L') {
         e.preventDefault()
-        setShowAIChat(prev => !prev)
+        // Only toggle on if it's closed. If it's open, the panel will handle its own closing animation
+        if (!showAIChat) {
+          setShowAIChat(true)
+        }
       }
       
       // Cmd+D or Ctrl+D to toggle diff mode (if feature is enabled)
@@ -512,43 +521,27 @@ function DocumentEditorPage() {
 
   // Handle AI-generated document replacement
   const handleDocumentReplacement = useCallback((markdownContent) => {
-    console.log('[DocumentEditor] handleDocumentReplacement called:', {
-      hasEditor: !!editor,
-      contentLength: markdownContent?.length,
-      editorReady: editor && !editor.isDestroyed,
-      editorEditable: editor?.isEditable
-    });
-    
     if (!editor) {
-      console.error('[DocumentEditor] No editor instance available');
       return;
     }
     
     if (editor.isDestroyed) {
-      console.error('[DocumentEditor] Editor is destroyed');
       return;
     }
     
     try {
-      console.log('[DocumentEditor] Converting markdown to HTML...');
       // Convert markdown to HTML
       const htmlContent = convertMarkdownToHtml(markdownContent);
-      console.log('[DocumentEditor] HTML content length:', htmlContent?.length);
-      console.log('[DocumentEditor] HTML preview:', htmlContent?.substring(0, 200));
       
       // Replace editor content
-      console.log('[DocumentEditor] Setting editor content...');
       editor.commands.setContent(htmlContent);
       
       // Mark as dirty so user can save
       setIsDirty(true);
       
-      console.log('[DocumentEditor] Document successfully replaced');
-      
       // Optionally close the AI chat panel
       // setShowAIChat(false);
     } catch (error) {
-      console.error('[DocumentEditor] Error replacing document:', error);
       alert('Failed to replace document content. Please try again.');
     }
   }, [editor]);
@@ -600,7 +593,7 @@ function DocumentEditorPage() {
   const isFinalized = documentData?.status === 'finalized'
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-[#0A0F1E] via-[#0A0F1E] to-[#05070C] ${showAIChat ? 'ai-chat-open' : ''}`}>
+    <div className="min-h-screen bg-gradient-to-br from-[#0A0F1E] via-[#0A0F1E] to-[#05070C]">
       {/* Header */}
       <div className="glass-panel sticky top-0 z-50 border-b border-white/10">
         <div className="max-w-7xl mx-auto px-8 py-4">
@@ -843,6 +836,17 @@ function DocumentEditorPage() {
                 🖍️
               </ToolbarButton>
               
+              <div className="h-6 w-px bg-white/20"></div>
+              
+              {/* Mermaid Diagram Button */}
+              <ToolbarButton
+                onClick={() => setShowMermaidModal(true)}
+                isActive={false}
+                title="Insert Mermaid Diagram (Cmd+Alt+M)"
+              >
+                📊 Diagram
+              </ToolbarButton>
+              
               {/* Temporary Debug Button for Diff Testing */}
               {DIFF_ENABLED && (
                 <>
@@ -952,6 +956,20 @@ function DocumentEditorPage() {
         selectedText={selectedTextForEdit}
       />
 
+      {/* Mermaid Insert Modal */}
+      <MermaidInsertModal
+        isOpen={showMermaidModal}
+        onClose={() => setShowMermaidModal(false)}
+        onInsert={(content) => {
+          if (editor) {
+            editor.commands.insertContent({
+              type: 'mermaid',
+              attrs: { content }
+            })
+          }
+        }}
+      />
+
       {/* AI Regeneration Modal */}
       {showAIModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
@@ -999,8 +1017,6 @@ function DocumentEditorPage() {
         documentContent={editor?.getText() || ''}
         accountData={accountData || { id: accountId, name: 'Loading...' }}
         documentId={docId}
-        mode={mode}
-        onModeChange={setMode}
         agentThreadId={agentThreadId}
         onThreadCreate={setAgentThreadId}
         onDocumentGenerated={handleDocumentReplacement}
