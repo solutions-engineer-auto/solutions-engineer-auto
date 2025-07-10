@@ -135,6 +135,14 @@ def generate_documents_sequentially(scenario: Dict[str, Any]):
         logger.error("No document definitions loaded. Aborting generation.")
         return
 
+    # Add vendor and prospect summary documents to the beginning of the list.
+    summary_docs = [
+        {"name": "Vendor Summary", "desc": "A summary document outlining the vendor's company profile, its flagship solution, key features, and ideal customer profile."},
+        {"name": "Prospect Summary", "desc": "A summary document outlining the prospect's company profile, industry, and specific business pain points."}
+    ]
+    document_definitions = summary_docs + document_definitions
+    logger.info("Added custom vendor and prospect summary documents to the generation queue.")
+
     # The incoming data from the LLM can be unpredictable. It might be the schema
     # definition (with data in 'properties') or nested under a 'scenario' key.
     # This block attempts to normalize the data into the expected structure.
