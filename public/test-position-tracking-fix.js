@@ -1,4 +1,6 @@
 /**
+ * TEST FILE - SAFE TO DELETE AFTER VERIFICATION
+ * 
  * Test script for verifying position tracking fix
  * 
  * This test demonstrates that marks now correctly track their positions
