@@ -33,14 +33,13 @@ function DocumentEditorPage() {
   
   // Agent integration states
   const [mode, setMode] = useState('mock')
-  const [agentActivity, setAgentActivity] = useState(null)
   const [agentThreadId, setAgentThreadId] = useState(null)
-  const [isGenerating, setIsGenerating] = useState(false)
   const [accountData, setAccountData] = useState(null)
   
   // Diff system states
-  const [showDiffUI, setShowDiffUI] = useState(false)
-  const [pendingChanges, setPendingChanges] = useState(0)
+  // These are commented out for future use when the UI is connected
+  // const [showDiffUI, setShowDiffUI] = useState(false)
+  // const [pendingChanges, setPendingChanges] = useState(0)
 
   // Handle AI edit request from DiffExtension
   const handleAIEditRequest = useCallback(({ quarantine }) => {
@@ -153,11 +152,11 @@ function DocumentEditorPage() {
         if (changeManager) {
           changeManager.subscribe(({ event, data }) => {
             if (event === 'change-added') {
-              setPendingChanges(prev => prev + 1)
-              setShowDiffUI(true)
+              // setPendingChanges(prev => prev + 1) // This line was removed
+              // setShowDiffUI(true) // This line was removed
             } else if (event === 'change-updated') {
               if (data.status !== 'pending') {
-                setPendingChanges(prev => Math.max(0, prev - 1))
+                // setPendingChanges(prev => Math.max(0, prev - 1)) // This line was removed
               }
             }
           })
@@ -347,7 +346,7 @@ function DocumentEditorPage() {
         e.preventDefault()
         if (editor) {
           editor.commands.toggleDiffMode()
-          setShowDiffUI(prev => !prev)
+          // setShowDiffUI(prev => !prev) // This line was removed
         }
       }
     }
@@ -723,6 +722,58 @@ function DocumentEditorPage() {
               >
                 🖍️
               </ToolbarButton>
+              
+              {/* Temporary Debug Button for Diff Testing */}
+              {DIFF_ENABLED && (
+                <>
+                  <div className="h-6 w-px bg-white/20"></div>
+                  <ToolbarButton
+                    onClick={() => {
+                      // Get current selection
+                      const { selection } = editor.state;
+                      
+                      if (selection.empty) {
+                        alert('Please select some text first');
+                        return;
+                      }
+                      
+                      // Get selected text
+                      const selectedText = editor.state.doc.textBetween(selection.from, selection.to);
+                      
+                      // Create a diff change
+                      const change = {
+                        type: 'modification',
+                        originalText: selectedText,
+                        suggestedText: 'TEST',
+                        position: {
+                          from: selection.from,
+                          to: selection.to
+                        },
+                        instruction: 'Debug test replacement'
+                      };
+                      
+                      // Enable diff mode if not already enabled
+                      if (!editor.storage.diffV2?.isActive) {
+                        editor.commands.toggleDiffMode();
+                      }
+                      
+                      // Add the change
+                      editor.commands.addChange(change);
+                      
+                      console.log('Debug diff created:', {
+                        from: selection.from,
+                        to: selection.to,
+                        original: selectedText,
+                        suggested: 'TEST'
+                      });
+                    }}
+                    isActive={false}
+                    title="Create test diff for selected text"
+                  >
+                    🧪 Test Diff
+                  </ToolbarButton>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -850,7 +901,7 @@ function DocumentEditorPage() {
       />
       
       {/* Agent Activity Indicator */}
-      <AgentActivity activity={agentActivity} />
+      <AgentActivity activity={null} />
     </div>
   )
 }

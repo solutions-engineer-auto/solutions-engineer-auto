@@ -163,7 +163,9 @@ export const DiffExtensionV2 = Extension.create({
           to,
           change.type,
           change.id,
-          change.status
+          change.status,
+          change.originalText,
+          change.suggestedText
         )
         
         console.log('[DiffExtension] Mark applied:', success)

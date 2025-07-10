@@ -431,9 +431,28 @@ const DiffOverlayPortal = ({ changeId, markElement, onAccept, onReject, editor }
   React.useEffect(() => {
     if (editor && editor.storage.diffV2 && changeId) {
       const change = editor.storage.diffV2.changeManager.getChange(changeId);
-      setChangeData(change);
+      
+      // If change not found in manager (e.g., after undo), try to get it from mark attributes
+      if (!change && markElement) {
+        const originalText = markElement.getAttribute('data-original-text');
+        const suggestedText = markElement.getAttribute('data-suggested-text');
+        const type = markElement.getAttribute('data-diff-type');
+        
+        if (type && (originalText || suggestedText)) {
+          // Reconstruct change data from mark attributes
+          setChangeData({
+            id: changeId,
+            type: type,
+            originalText: originalText || '',
+            suggestedText: suggestedText || '',
+            status: markElement.getAttribute('data-status') || 'pending'
+          });
+        }
+      } else {
+        setChangeData(change);
+      }
     }
-  }, [editor, changeId]);
+  }, [editor, changeId, markElement]);
   
   // Calculate position relative to viewport
   const updatePosition = React.useCallback(() => {

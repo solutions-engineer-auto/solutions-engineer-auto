@@ -49,6 +49,28 @@ export const DiffMark = Mark.create({
           }
         },
       },
+      // Original text (for undo support)
+      originalText: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-original-text'),
+        renderHTML: attributes => {
+          if (!attributes.originalText) return {}
+          return {
+            'data-original-text': attributes.originalText,
+          }
+        },
+      },
+      // Suggested text (for undo support)
+      suggestedText: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-suggested-text'),
+        renderHTML: attributes => {
+          if (!attributes.suggestedText) return {}
+          return {
+            'data-suggested-text': attributes.suggestedText,
+          }
+        },
+      },
       // Color for the highlight
       color: {
         default: null,
@@ -139,7 +161,7 @@ export const DiffMark = Mark.create({
       },
       
       // Helper to mark a specific range
-      markDiff: (from, to, type, changeId, status = 'pending') => ({ commands, editor }) => {
+      markDiff: (from, to, type, changeId, status = 'pending', originalText = null, suggestedText = null) => ({ commands, editor }) => {
         // Validate positions first
         const docSize = editor.state.doc.content.size
         if (from < 0 || to > docSize) {
@@ -168,7 +190,9 @@ export const DiffMark = Mark.create({
               editor.schema.marks.diffMark.create({
                 type,
                 changeId,
-                status
+                status,
+                originalText,
+                suggestedText
               })
             )
           }
