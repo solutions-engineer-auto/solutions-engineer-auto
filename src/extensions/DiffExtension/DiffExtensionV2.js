@@ -208,6 +208,43 @@ export const DiffExtensionV2 = Extension.create({
   },
 
   addCommands() {
+    // Helper function to find current position of a mark by changeId
+    const findMarkPositionById = (editor, changeId) => {
+      let found = null;
+      
+      editor.state.doc.descendants((node, pos) => {
+        if (node.isText && !found) {
+          const diffMark = node.marks.find(mark => 
+            mark.type.name === 'diffMark' && 
+            mark.attrs.changeId === changeId
+          );
+          
+          if (diffMark) {
+            found = {
+              from: pos,
+              to: pos + node.nodeSize,
+              mark: diffMark,
+              text: node.text
+            };
+            console.log('[findMarkPositionById] Found mark:', {
+              changeId,
+              oldStoredPosition: '(will be compared later)',
+              currentPosition: { from: found.from, to: found.to },
+              markedText: found.text,
+              markType: diffMark.attrs.type
+            });
+            return false; // Stop searching
+          }
+        }
+      });
+      
+      if (!found) {
+        console.warn('[findMarkPositionById] Mark not found for changeId:', changeId);
+      }
+      
+      return found;
+    };
+
     return {
       // Enable/disable diff mode
       toggleDiffMode: () => ({ editor }) => {
@@ -319,8 +356,32 @@ export const DiffExtensionV2 = Extension.create({
         // Hide the overlay first
         this.storage.overlayManager.hideOverlay()
         
-        // Get current document state
-        const { from, to } = change.position
+        // POSITION FIX: Look up current mark position instead of using stored position
+        const currentMarkPosition = findMarkPositionById(editor, changeId)
+        
+        if (!currentMarkPosition) {
+          console.error('[acceptChange] Could not find mark in document for changeId:', changeId)
+          // Remove orphaned change
+          this.storage.changeManager.removeChange(changeId)
+          return false
+        }
+        
+        // Use current position from mark
+        const { from, to } = currentMarkPosition
+        const storedFrom = change.position.from
+        const storedTo = change.position.to
+        
+        // Debug: Compare stored vs current positions
+        if (from !== storedFrom || to !== storedTo) {
+          console.log('[acceptChange] POSITION DRIFT DETECTED:', {
+            changeId,
+            storedPosition: { from: storedFrom, to: storedTo },
+            currentPosition: { from, to },
+            drift: { from: from - storedFrom, to: to - storedTo },
+            markedText: currentMarkPosition.text
+          })
+        }
+        
         const docSize = editor.state.doc.content.size
         
         // Validate positions are still valid
@@ -414,8 +475,32 @@ export const DiffExtensionV2 = Extension.create({
         // Hide the overlay first
         this.storage.overlayManager.hideOverlay()
         
-        // Get current document state
-        const { from, to } = change.position
+        // POSITION FIX: Look up current mark position instead of using stored position
+        const currentMarkPosition = findMarkPositionById(editor, changeId)
+        
+        if (!currentMarkPosition) {
+          console.error('[rejectChange] Could not find mark in document for changeId:', changeId)
+          // Remove orphaned change
+          this.storage.changeManager.removeChange(changeId)
+          return false
+        }
+        
+        // Use current position from mark
+        const { from, to } = currentMarkPosition
+        const storedFrom = change.position.from
+        const storedTo = change.position.to
+        
+        // Debug: Compare stored vs current positions
+        if (from !== storedFrom || to !== storedTo) {
+          console.log('[rejectChange] POSITION DRIFT DETECTED:', {
+            changeId,
+            storedPosition: { from: storedFrom, to: storedTo },
+            currentPosition: { from, to },
+            drift: { from: from - storedFrom, to: to - storedTo },
+            markedText: currentMarkPosition.text
+          })
+        }
+        
         const docSize = editor.state.doc.content.size
         
         // Validate positions are still valid
