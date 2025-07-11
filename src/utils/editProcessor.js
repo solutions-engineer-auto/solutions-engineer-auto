@@ -75,6 +75,13 @@ export function processAIEdits(editor, aiResponse, onProgress) {
   
   // Process each edit
   const edits = aiResponse.edits || [];
+  
+  // Handle case where no edits were suggested
+  if (edits.length === 0) {
+    results.errors.push('No changes suggested by AI');
+    return results;
+  }
+  
   edits.forEach((edit, index) => {
     try {
       if (onProgress) {

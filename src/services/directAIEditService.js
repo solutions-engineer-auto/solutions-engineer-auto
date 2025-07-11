@@ -43,7 +43,8 @@ Rules:
 - The "target" must be the EXACT text from the input
 - Include confidence score (0-1)
 - Keep changes focused and minimal
-- Only make changes that directly address the instruction`;
+- Only make changes that directly address the instruction
+- If no changes are needed or the instruction doesn't apply, return an empty edits array: {"edits": []}`;
 
   const userPrompt = `Text to edit:
 "${text}"

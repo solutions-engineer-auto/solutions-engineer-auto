@@ -70,9 +70,12 @@ const AIEditModal = ({ isOpen, onClose, onSubmit, selectedText }) => {
             />
           </div>
           
-          <div className="flex items-center justify-between">
-            <div className="text-xs text-white/50">
-              Examples: "Make it more professional" • "Simplify the language" • "Add more detail"
+          <div className="mb-4">
+            <div className="text-xs text-white/50 space-y-1">
+              <p className="font-medium text-white/70">💡 Tips for better results:</p>
+              <p>• Be specific: "Make it more formal" vs "Make it better"</p>
+              <p>• Try actionable verbs: "Simplify", "Expand", "Clarify", "Shorten"</p>
+              <p>• Examples: "Fix grammar", "Add technical details", "Make it friendlier"</p>
             </div>
           </div>
           

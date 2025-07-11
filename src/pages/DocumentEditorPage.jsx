@@ -328,7 +328,7 @@ function DocumentEditorPage() {
     if (!editor || typeof document === 'undefined') return
 
     const handleKeyDown = (e) => {
-      // Cmd+K or Ctrl+K for AI regeneration (UI ready, integration pending)
+      // Cmd+K or Ctrl+K for AI edit
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
         if (editor && editor.state) {
@@ -336,8 +336,15 @@ function DocumentEditorPage() {
           const { selection } = state
           const text = state.doc.textBetween(selection.from, selection.to, ' ')
           if (text) {
-            setSelectedText(text)
-            setShowAIModal(true)
+            setSelectedTextForEdit(text)
+            setShowAIEditModal(true)
+          } else {
+            // Show a hint if no text is selected
+            const hintMessage = document.createElement('div')
+            hintMessage.className = 'fixed bottom-4 left-1/2 transform -translate-x-1/2 glass-panel p-3 bg-cyan-500/20 border-cyan-500/30 z-50'
+            hintMessage.innerHTML = '<span class="text-white text-sm">Select some text first, then press Cmd+K</span>'
+            document.body.appendChild(hintMessage)
+            setTimeout(() => hintMessage.remove(), 2000)
           }
         }
       }
@@ -452,18 +459,33 @@ function DocumentEditorPage() {
       // Remove loading and show success
       loadingMessage.remove();
       
-      const successMessage = document.createElement('div');
-      successMessage.className = 'fixed top-4 right-4 glass-panel p-4 bg-emerald-500/20 border-emerald-500/30 z-50';
-      successMessage.innerHTML = `
-        <div class="flex items-center space-x-2">
-          <svg class="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
-          <span class="text-white">${result.successful} suggestions applied</span>
-        </div>
-      `;
-      document.body.appendChild(successMessage);
-      setTimeout(() => successMessage.remove(), 3000);
+      // Show appropriate message based on results
+      if (result.successful > 0) {
+        const successMessage = document.createElement('div');
+        successMessage.className = 'fixed top-4 right-4 glass-panel p-4 bg-emerald-500/20 border-emerald-500/30 z-50';
+        successMessage.innerHTML = `
+          <div class="flex items-center space-x-2">
+            <svg class="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <span class="text-white">${result.successful} suggestion${result.successful > 1 ? 's' : ''} applied</span>
+          </div>
+        `;
+        document.body.appendChild(successMessage);
+        setTimeout(() => successMessage.remove(), 3000);
+      } else {
+        // No suggestions were applied
+        const infoMessage = document.createElement('div');
+        infoMessage.className = 'fixed top-4 right-4 glass-panel p-4 bg-cyan-500/20 border-cyan-500/30 z-50';
+        infoMessage.innerHTML = `
+          <div class="flex items-center space-x-2">
+            <span class="text-cyan-400">ℹ️</span>
+            <span class="text-white">No changes suggested for this text</span>
+          </div>
+        `;
+        document.body.appendChild(infoMessage);
+        setTimeout(() => infoMessage.remove(), 4000);
+      }
       
       // Log results
       console.log('[AI Edit] Results:', result);
@@ -843,7 +865,7 @@ function DocumentEditorPage() {
                       setShowAIEditModal(true);
                     }}
                     isActive={false}
-                    title="Get AI edit suggestions for selected text"
+                    title="Get AI edit suggestions for selected text (Cmd+K)"
                   >
                     🧪 AI Edit
                   </ToolbarButton>
