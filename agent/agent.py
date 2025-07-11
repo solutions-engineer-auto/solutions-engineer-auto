@@ -25,8 +25,8 @@ from utils.supabase_client import supabase_manager
 # Validate required environment variables
 required_vars = {
     "OPENAI_API_KEY": "OpenAI API key for LLM calls",
-    "SUPABASE_URL": "Supabase project URL",
-    "SUPABASE_SERVICE_KEY": "Supabase service key for bypassing RLS"
+    "VITE_SUPABASE_URL": "Supabase project URL",
+    "VITE_SUPABASE_SERVICE_KEY": "Supabase service key for bypassing RLS"
 }
 
 missing_vars = []

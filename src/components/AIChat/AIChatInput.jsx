@@ -42,6 +42,10 @@ const AIChatInput = ({
     }
   }, []);
 
+  /**
+   * Handles the click event for the microphone button.
+   * Toggles the voice recognition listening state.
+   */
   const handleToggleListening = () => {
     if (!isDisabled && toggleListening) {
       toggleListening(setMessage);

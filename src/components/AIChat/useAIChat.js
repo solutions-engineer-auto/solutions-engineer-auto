@@ -173,6 +173,11 @@ export const useAIChat = ({ documentId, accountData, onDocumentUpdate }) => {
     }
   }, []);
 
+  /**
+   * Toggles the speech recognition listening state.
+   * Starts or stops listening for voice input.
+   * @param {function(string): void} onTranscriptUpdate - Callback function to update the transcript in the input field.
+   */
   const toggleListening = useCallback((onTranscriptUpdate) => {
     const recognition = recognitionRef.current;
     if (!recognition) return;

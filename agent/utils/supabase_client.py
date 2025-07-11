@@ -12,8 +12,8 @@ class SupabaseManager:
     
     def __init__(self):
         self.client: Client = create_client(
-            os.getenv("SUPABASE_URL"),
-            os.getenv("SUPABASE_SERVICE_KEY")
+            os.getenv("VITE_SUPABASE_URL"),
+            os.getenv("VITE_SUPABASE_SERVICE_KEY")
         )
     
     async def log_event(

@@ -27,8 +27,8 @@ from state import AgentState, initialize_state
 
 # Initialize Supabase client
 supabase: Client = create_client(
-    os.getenv("SUPABASE_URL"),
-    os.getenv("SUPABASE_SERVICE_KEY")
+    os.getenv("VITE_SUPABASE_URL"),
+    os.getenv("VITE_SUPABASE_SERVICE_KEY")
 )
 
 # Create FastAPI app
@@ -294,7 +294,7 @@ async def handle_feedback(request: Request):
 
 if __name__ == "__main__":
     # Check for required environment variables
-    required_vars = ["OPENAI_API_KEY", "SUPABASE_URL", "SUPABASE_SERVICE_KEY"]
+    required_vars = ["OPENAI_API_KEY", "VITE_SUPABASE_URL", "VITE_SUPABASE_SERVICE_KEY"]
     missing = [var for var in required_vars if not os.getenv(var)]
     
     if missing:
