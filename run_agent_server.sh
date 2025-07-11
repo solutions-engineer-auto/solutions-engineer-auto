@@ -109,8 +109,8 @@ if [ "$ENV_LOADED" = false ]; then
     echo "❌ Error: No .env file found."
     echo "   Please create a .env file in the root directory with:"
     echo "   OPENAI_API_KEY=your-key"
-    echo "   SUPABASE_URL=your-url"
-    echo "   SUPABASE_SERVICE_KEY=your-service-key"
+    echo "   VITE_SUPABASE_URL=your-url"
+    echo "   VITE_SUPABASE_SERVICE_KEY=your-service-key"
     echo ""
     echo "   Optional:"
     echo "   OPENAI_MODEL=gpt-4o-mini  (default: gpt-4o-mini)"
@@ -120,8 +120,8 @@ fi
 # Verify required environment variables
 MISSING_VARS=()
 [ -z "${OPENAI_API_KEY:-}" ] && MISSING_VARS+=("OPENAI_API_KEY")
-[ -z "${SUPABASE_URL:-}" ] && MISSING_VARS+=("SUPABASE_URL")
-[ -z "${SUPABASE_SERVICE_KEY:-}" ] && MISSING_VARS+=("SUPABASE_SERVICE_KEY")
+[ -z "${VITE_SUPABASE_URL:-}" ] && MISSING_VARS+=("VITE_SUPABASE_URL")
+[ -z "${VITE_SUPABASE_SERVICE_KEY:-}" ] && MISSING_VARS+=("VITE_SUPABASE_SERVICE_KEY")
 
 if [ ${#MISSING_VARS[@]} -ne 0 ]; then
     echo "❌ Error: Missing required environment variables:"

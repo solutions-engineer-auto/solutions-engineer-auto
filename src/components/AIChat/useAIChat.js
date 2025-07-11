@@ -7,6 +7,9 @@ export const useAIChat = ({ documentId, accountData, onDocumentUpdate }) => {
   const [currentActivity, setCurrentActivity] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState({ isConnected: false });
   const [generationProgress, setGenerationProgress] = useState(0);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeechSupported, setIsSpeechSupported] = useState(false);
+  const recognitionRef = useRef(null);
   
   // Track temporary message IDs to prevent duplicates
   const messageIdMapRef = useRef(new Map());
@@ -150,8 +153,67 @@ export const useAIChat = ({ documentId, accountData, onDocumentUpdate }) => {
     
     return () => {
       subscription.unsubscribe();
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
     };
   }, [documentId, onDocumentUpdate]);
+
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      setIsSpeechSupported(true);
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognitionRef.current = recognition;
+    } else {
+      setIsSpeechSupported(false);
+      console.warn("SpeechRecognition API not supported in this browser.");
+    }
+  }, []);
+
+  /**
+   * Toggles the speech recognition listening state.
+   * Starts or stops listening for voice input.
+   * @param {function(string): void} onTranscriptUpdate - Callback function to update the transcript in the input field.
+   */
+  const toggleListening = useCallback((onTranscriptUpdate) => {
+    const recognition = recognitionRef.current;
+    if (!recognition) return;
+
+    if (isListening) {
+      recognition.stop();
+      setIsListening(false);
+      return;
+    }
+
+    setIsListening(true);
+
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map(result => result[0])
+        .map(result => result.transcript)
+        .join('');
+      onTranscriptUpdate(transcript);
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error', event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    try {
+      recognition.start();
+    } catch (e) {
+      console.error("Could not start recognition:", e);
+      setIsListening(false);
+    }
+  }, [isListening]);
   
   const sendMessage = useCallback(async (message, mode = 'agent', currentAccountData = null) => {
     if (isStreaming || !message.trim()) return;
@@ -238,6 +300,9 @@ export const useAIChat = ({ documentId, accountData, onDocumentUpdate }) => {
     connectionStatus,
     generationProgress,
     sendMessage,
-    clearMessages: () => setMessages([])
+    clearMessages: () => setMessages([]),
+    isListening,
+    isSpeechSupported,
+    toggleListening,
   };
 };

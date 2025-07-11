@@ -29,6 +29,9 @@ const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, documentId
   const connectionStatus = chatResult.connectionStatus;
   const lastGeneratedDocument = null; // Not in current implementation
   const generationProgress = chatResult.generationProgress;
+  const isListening = chatResult.isListening;
+  const isSpeechSupported = chatResult.isSpeechSupported;
+  const toggleListening = chatResult.toggleListening;
   
   // Document replacement is now handled by the onDocumentUpdate callback in useAIChat
 
@@ -209,6 +212,9 @@ const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, documentId
           <AIChatInput 
             onSendMessage={handleSendMessage}
             isDisabled={isStreaming}
+            isListening={isListening}
+            isSpeechSupported={isSpeechSupported}
+            toggleListening={toggleListening}
           />
         </>
       )}

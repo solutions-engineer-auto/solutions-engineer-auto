@@ -4,6 +4,7 @@ Supabase client utilities and helper functions
 import os
 from typing import Dict, Any, List, Optional
 from supabase import create_client, Client
+from postgrest import APIResponse
 from datetime import datetime
 
 
@@ -11,20 +12,30 @@ class SupabaseManager:
     """Manages Supabase operations for the agent"""
     
     def __init__(self):
-        self.client: Client = create_client(
-            os.getenv("SUPABASE_URL"),
-            os.getenv("SUPABASE_SERVICE_KEY")
-        )
+        url = os.getenv("VITE_SUPABASE_URL")
+        key = os.getenv("VITE_SUPABASE_SERVICE_KEY")
+        if not url or not key:
+            raise ValueError("Supabase URL and service key must be set in environment variables.")
+        self.client: Client = create_client(url, key)
+
+    async def rpc(self, function_name: str, params: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Call a Supabase RPC function."""
+        try:
+            result = self.client.rpc(function_name, params).execute()
+            return result.data if result.data else []
+        except Exception as e:
+            print(f"[SupabaseManager] RPC call '{function_name}' failed: {e}")
+            raise
     
     async def log_event(
         self,
         document_id: str,
         event_type: str,
         content: str,
-        data: Dict = None,
-        thread_id: str = None,
-        run_id: str = None
-    ) -> Dict[str, Any]:
+        data: Optional[Dict] = None,
+        thread_id: Optional[str] = None,
+        run_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """Log an event to chat_messages table"""
         try:
             result = self.client.table("chat_messages").insert({
@@ -40,7 +51,7 @@ class SupabaseManager:
                 "thread_id": thread_id,
                 "run_id": run_id
             }).execute()
-            return result.data
+            return result.data if result.data else []
         except Exception as e:
             print(f"[SupabaseManager] Failed to log event: {e}")
             raise
@@ -72,7 +83,7 @@ class SupabaseManager:
         self,
         document_id: str,
         status: str,
-        additional_fields: Dict[str, Any] = None
+        additional_fields: Optional[Dict[str, Any]] = None
     ) -> bool:
         """Update document generation status"""
         try:
@@ -96,7 +107,7 @@ class SupabaseManager:
         document_id: str,
         account_id: str,
         author_id: str,
-        title: str = None
+        title: Optional[str] = None
     ) -> bool:
         """Create initial document record"""
         try:
@@ -129,8 +140,8 @@ class SupabaseManager:
         document_id: str,
         role: str,
         content: str,
-        thread_id: str = None,
-        run_id: str = None
+        thread_id: Optional[str] = None,
+        run_id: Optional[str] = None
     ) -> bool:
         """Log a chat message"""
         try:
