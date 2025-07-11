@@ -1,10 +1,13 @@
-# AI Diff System - Agent Integration Guide
+# AI Diff System - Agent Integration Guide (Revised)
 
 ## 🎯 Overview
 
-This guide explains how to modify the LangGraph agent to support document editing mode alongside its current generation mode. The agent will analyze existing documents and return structured edit suggestions that integrate with the frontend diff system.
+This guide explains how to modify the LangGraph agent to support document editing mode. The agent will analyze existing documents and return structured edit suggestions that integrate with the **already working** frontend diff system.
 
-## 🏗️ Architecture Changes
+## ⚡ Key Change
+Since the diff visualization system (Phase 2) is already complete and working, we only need to focus on getting structured edit suggestions from the AI and creating diff marks from them.
+
+## 🏗️ Architecture
 
 ### Current Flow (Generation)
 ```mermaid
@@ -19,11 +22,13 @@ graph LR
 ### New Flow (Editing)
 ```mermaid
 graph LR
-    A[Frontend] -->|task + document + mode=edit| B[Vercel API]
+    A[Frontend] -->|instruction + document + mode=edit| B[Vercel API]
     B -->|create thread/run| C[LangGraph Agent]
     C -->|analyze document| D[LLM]
     D -->|edit suggestions JSON| E[Supabase]
-    E -->|realtime events| A
+    E -->|realtime events| F[Frontend]
+    F -->|process suggestions| G[Create Diff Marks]
+    G -->|user clicks marks| H[Accept/Reject]
 ```
 
 ## 📝 Agent Modifications

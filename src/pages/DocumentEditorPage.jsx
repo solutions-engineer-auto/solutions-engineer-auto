@@ -11,11 +11,14 @@ import TextAlign from '@tiptap/extension-text-align'
 import TextStyle from '@tiptap/extension-text-style'
 import AIChatPanel from '../components/AIChat/AIChatPanel'
 import ExportModal from '../components/ExportModal'
+import AIEditModal from '../components/AIEditModal'
 import { supabase } from '../supabaseClient'
 import AgentActivity from '../components/AgentActivity'
 import { convertMarkdownToHtml } from '../utils/markdownToHtml'
 import { DiffExtension } from '../extensions/DiffExtension'
 import { DIFF_ENABLED } from '../utils/featureFlags'
+import { getDirectAISuggestions } from '../services/directAIEditService'
+import { processAIEdits } from '../utils/editProcessor'
 
 function DocumentEditorPage() {
   const { accountId, docId } = useParams()
@@ -30,6 +33,8 @@ function DocumentEditorPage() {
   const [selectedText, setSelectedText] = useState('')
   const [initialContent, setInitialContent] = useState('')
   const [showAIChat, setShowAIChat] = useState(false)
+  const [showAIEditModal, setShowAIEditModal] = useState(false)
+  const [selectedTextForEdit, setSelectedTextForEdit] = useState('')
   
   // Agent integration states
   const [mode, setMode] = useState('mock')
@@ -246,7 +251,7 @@ function DocumentEditorPage() {
             const fallbackData = { id: accountId, name: 'Account' };
             setAccountData(fallbackData)
           }
-        } catch (error) {
+        } catch {
           // Even on error, set accountData with the ID from URL
           const errorFallbackData = { id: accountId, name: 'Account' };
           setAccountData(errorFallbackData)
@@ -418,6 +423,70 @@ function DocumentEditorPage() {
   ]
   
   const currentStatusInfo = documentStatuses.find(s => s.value === documentData?.status) || documentStatuses[1]
+
+  // Handle AI edit request submission
+  const handleAIEditSubmit = useCallback(async (instruction) => {
+    if (!editor || !selectedTextForEdit) return;
+    
+    try {
+      // Show loading notification
+      const loadingMessage = document.createElement('div');
+      loadingMessage.className = 'fixed top-4 right-4 glass-panel p-4 bg-cyan-500/20 border-cyan-500/30 z-50';
+      loadingMessage.innerHTML = `
+        <div class="flex items-center space-x-2">
+          <span class="animate-spin rounded-full h-4 w-4 border-2 border-cyan-400/30 border-t-cyan-400"></span>
+          <span class="text-white">Processing AI suggestions...</span>
+        </div>
+      `;
+      document.body.appendChild(loadingMessage);
+      
+      // Request AI edit suggestions directly from OpenAI
+      const aiResponse = await getDirectAISuggestions({
+        text: selectedTextForEdit,
+        instruction: instruction
+      });
+      
+      // Process the AI response
+      const result = processAIEdits(editor, aiResponse);
+      
+      // Remove loading and show success
+      loadingMessage.remove();
+      
+      const successMessage = document.createElement('div');
+      successMessage.className = 'fixed top-4 right-4 glass-panel p-4 bg-emerald-500/20 border-emerald-500/30 z-50';
+      successMessage.innerHTML = `
+        <div class="flex items-center space-x-2">
+          <svg class="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          <span class="text-white">${result.successful} suggestions applied</span>
+        </div>
+      `;
+      document.body.appendChild(successMessage);
+      setTimeout(() => successMessage.remove(), 3000);
+      
+      // Log results
+      console.log('[AI Edit] Results:', result);
+      if (result.errors.length > 0) {
+        console.warn('[AI Edit] Errors:', result.errors);
+      }
+      
+    } catch (error) {
+      console.error('[AI Edit] Error:', error);
+      
+      // Show error notification
+      const errorMessage = document.createElement('div');
+      errorMessage.className = 'fixed top-4 right-4 glass-panel p-4 bg-red-500/20 border-red-500/30 z-50';
+      errorMessage.innerHTML = `
+        <div class="flex items-center space-x-2">
+          <span class="text-red-400">⚠️</span>
+          <span class="text-white">Failed to get AI suggestions</span>
+        </div>
+      `;
+      document.body.appendChild(errorMessage);
+      setTimeout(() => errorMessage.remove(), 5000);
+    }
+  }, [editor, selectedTextForEdit, docId]);
 
   // Handle AI-generated document replacement
   const handleDocumentReplacement = useCallback((markdownContent) => {
@@ -769,37 +838,14 @@ function DocumentEditorPage() {
                       // Get selected text
                       const selectedText = editor.state.doc.textBetween(selection.from, selection.to);
                       
-                      // Create a diff change
-                      const change = {
-                        type: 'modification',
-                        originalText: selectedText,
-                        suggestedText: 'TEST',
-                        position: {
-                          from: selection.from,
-                          to: selection.to
-                        },
-                        instruction: 'Debug test replacement'
-                      };
-                      
-                      // Enable diff mode if not already enabled
-                      if (!editor.storage.diffV2?.isActive) {
-                        editor.commands.toggleDiffMode();
-                      }
-                      
-                      // Add the change
-                      editor.commands.addChange(change);
-                      
-                      console.log('Debug diff created:', {
-                        from: selection.from,
-                        to: selection.to,
-                        original: selectedText,
-                        suggested: 'TEST'
-                      });
+                      // Store selection for AI edit
+                      setSelectedTextForEdit(selectedText);
+                      setShowAIEditModal(true);
                     }}
                     isActive={false}
-                    title="Create test diff for selected text"
+                    title="Get AI edit suggestions for selected text"
                   >
-                    🧪 Test Diff
+                    🧪 AI Edit
                   </ToolbarButton>
                 </>
               )}
@@ -874,6 +920,14 @@ function DocumentEditorPage() {
         onClose={() => setShowExportModal(false)}
         editor={editor}
         documentData={documentData}
+      />
+
+      {/* AI Edit Modal */}
+      <AIEditModal
+        isOpen={showAIEditModal}
+        onClose={() => setShowAIEditModal(false)}
+        onSubmit={handleAIEditSubmit}
+        selectedText={selectedTextForEdit}
       />
 
       {/* AI Regeneration Modal */}

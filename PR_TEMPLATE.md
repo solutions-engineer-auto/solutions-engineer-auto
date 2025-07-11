@@ -1,74 +1,66 @@
-# Add AI-Powered Diff System to Document Editor
+# Add AI Integration to Existing Diff System
 
 ## 🎯 Summary
-This PR implements a visual diff system that allows users to see, review, and accept/reject AI-suggested changes to documents. The implementation uses TipTap marks for reliable position tracking as text changes.
+This PR adds AI integration to the already-working diff system. The diff visualization (highlights, overlays, accept/reject) is complete and functional. This PR simply replaces the hardcoded "TEST" suggestions with actual AI-generated edits.
 
-## ✨ Features Added
-- **Visual Diff Highlighting**: Changes are highlighted with colors:
-  - 🟢 Green: Additions
-  - 🔴 Red: Deletions  
-  - 🔵 Cyan: Modifications
-- **Interactive Overlays**: Click on any highlighted change to see Accept/Reject buttons
-- **Debug Testing**: Added 🧪 Test Diff button in toolbar for easy testing
-- **Position Tracking**: Implemented robust position tracking that maintains accuracy even as document changes
-- **Keyboard Shortcuts**: Cmd/Ctrl + K for triggering AI edits (UI ready for backend integration)
+## ✨ What's Being Added
+- **Mock AI Service**: Returns realistic edit suggestions for testing
+- **Edit Processor**: Handles multiple edits and finds text positions
+- **AI Button Integration**: Updates existing Test Diff button to use AI
+- **Error Handling**: Graceful handling of AI failures
 
 ## 🔧 Technical Implementation
-- Used TipTap marks instead of decorations for automatic position tracking
-- Implemented `DiffExtensionV2` with proper ProseMirror integration
-- Created `ChangeManagerV2` service for managing diff state
-- Added overlay system using React portals for better z-index management
-- Includes comprehensive test scripts in `public/` directory
+- Created `mockAIService.js` to simulate AI responses
+- Added `editProcessor.js` for parsing AI responses
+- Updated button handler to call AI service instead of using "TEST"
+- No changes to existing diff system (DiffExtensionV2, DiffMark, DiffOverlay)
 
 ## 📁 Files Changed
-### Core Implementation:
-- `src/extensions/DiffExtension/DiffExtensionV2.js` - Main extension logic
-- `src/extensions/DiffExtension/DiffMark.js` - Mark definition for highlights
-- `src/extensions/DiffExtension/DiffOverlay.jsx` - Accept/reject UI overlay
-- `src/services/ChangeManagerV2.js` - State management for changes
-- `src/pages/DocumentEditorPage.jsx` - Integration with editor + debug button
+### New Files:
+- `src/services/mockAIService.js` - Mock AI response generator
+- `src/utils/editProcessor.js` - AI response parser
 
-### Supporting Files:
-- `src/utils/featureFlags.js` - Feature flag system
-- Multiple test scripts in `public/` for validation
-- Documentation files explaining the implementation
+### Modified Files:
+- `src/pages/DocumentEditorPage.jsx` - Updated Test Diff button (line 762)
+
+### NO Changes to:
+- ❌ `src/extensions/DiffExtension/DiffExtensionV2.js` - Already works!
+- ❌ `src/extensions/DiffExtension/DiffMark.js` - Already works!
+- ❌ `src/extensions/DiffExtension/DiffOverlay.jsx` - Already works!
+- ❌ `src/services/ChangeManagerV2.js` - Already works!
 
 ## 🧪 Testing
 1. Run `npm run dev`
 2. Open any document in the editor
 3. Select some text
-4. Click the "🧪 Test Diff" button in the toolbar
-5. Click on the highlighted text to see accept/reject options
+4. Click the "🧪 Test Diff" button
+5. Should see AI-generated suggestion (not "TEST")
+6. Accept/reject still works perfectly
 
-### Test Scripts Available:
-- `public/test-position-tracking-fix.js` - Tests position tracking accuracy
-- Run in browser console: `await import('/test-position-tracking-fix.js')`
+### Before This PR:
+- Clicking Test Diff shows "TEST" as replacement
 
-## 📸 Screenshots
-[Add screenshots here showing:
-1. Text with diff highlights
-2. Accept/reject overlay when clicking a change
-3. The debug button in action]
+### After This PR:
+- Clicking Test Diff shows AI-generated suggestions
 
 ## ✅ Checklist
-- [x] Code follows project style guidelines
-- [x] Self-review completed
-- [x] Manual testing performed
-- [x] No console errors
-- [ ] Unit tests added (Jest setup complete, tests pending)
-- [x] Feature flag implemented (`DIFF_ENABLED`)
+- [ ] Uses existing `editor.commands.addChange()` API
+- [ ] No modifications to diff visualization system
+- [ ] Mock service returns proper format
+- [ ] Error handling implemented
+- [ ] Loading states added
 
 ## 🚀 Next Steps
-This PR completes Phase 2 of the AI diff system. Future phases will include:
-- Phase 3: Integration with AI backend for actual suggestions
-- Phase 4: Polish features (batch operations, keyboard navigation, etc.)
+- Replace mock service with real AI API integration
+- Add user input for AI instructions
+- Handle multiple simultaneous edits
 
 ## 💬 Notes for Reviewers
-- This is my first major PR on this project, feedback welcome!
-- The implementation prioritizes position tracking reliability over all else
-- The debug button is temporary and can be removed once backend integration is complete
-- Some test files in `public/` are for development only and can be cleaned up
+- The diff system is already 100% functional
+- This PR only adds AI data to feed into it
+- Total implementation is <100 lines of code
+- Can be tested immediately with existing UI
 
-## 🔗 Related Issues
-- Implements AI-powered document editing feature
-- Addresses position tracking issues from previous attempts 
+## 🔗 Context
+- Diff system already implemented and working
+- This completes the AI integration portion only 
