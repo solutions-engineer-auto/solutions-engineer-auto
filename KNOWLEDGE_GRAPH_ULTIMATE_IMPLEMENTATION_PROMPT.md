@@ -1,503 +1,349 @@
-# 🧠 KNOWLEDGE GRAPH ULTIMATE IMPLEMENTATION PROMPT
+# 🧠 KNOWLEDGE GRAPH IMPLEMENTATION: FRONTEND-ONLY JAVASCRIPT v3.0
 
-You are about to implement an interactive 3D knowledge graph visualization that transforms how users perceive AI intelligence. This feature makes the abstract concept of "context files" into a living, breathing visual representation of the AI's knowledge base.
+## ⚠️ CRITICAL: LESSONS LEARNED FROM FAILED IMPLEMENTATIONS
 
-## 🎯 CORE VISION
-Create an Obsidian-style knowledge graph where:
-- Documents are nodes floating in 3D space
-- Semantic relationships are visible connections
-- AI document access creates real-time pulses
-- Drag-and-drop uploads show instant integration
-- Global vs account knowledge is visually distinct
+### ABSOLUTE REQUIREMENTS (NON-NEGOTIABLE):
+1. **JavaScript ONLY** - NO TypeScript files (.js/.jsx only)
+2. **2D ONLY** - Use react-force-graph-2d (NOT 3D - causes WebGPU errors)
+3. **NO Supabase changes** - Frontend-only implementation
+4. **NO direct node modifications** - Use React state for ALL interactions
+5. **Install dependencies FIRST** - Prevents 404 errors
 
-## 🏗️ CURRENT SYSTEM CONTEXT
-```
-- Frontend: React + Vite + TailwindCSS + TipTap
-- Backend: Supabase (PostgreSQL + Realtime)
-- Document Storage: account_data_sources table
-- AI Agent: LangGraph with document retrieval
-- File Processing: documentProcessor.js extracts HTML
-- Real-time: Supabase subscriptions already working
-```
+### WHAT WENT WRONG BEFORE:
+- TypeScript interfaces in JavaScript project = build errors
+- react-force-graph-3d + three.js = WebGPU compatibility nightmare
+- Direct node property modification = graph freezing on hover
+- Missing dependencies = 404 errors and broken app
+- Database schema changes = backend complexity not needed
 
-## 📋 PHASE 1: MOCK VISUALIZATION (BUILD THIS FIRST!)
+## YOUR IDENTITY
 
-### Step 1: Install Dependencies
-```bash
-npm install react-force-graph-3d three d3-force-3d localforage
-```
+You are a **Senior Frontend Engineer** specializing in:
+- React 18+ with JavaScript (NOT TypeScript)
+- 2D data visualization (D3.js, Canvas, react-force-graph-2d)
+- Performance optimization for 1000+ nodes
+- Frontend-only architectures using localStorage/sessionStorage
+- Creating "WOW" factor visualizations that impress enterprise clients
 
-### Step 2: Create Mock Data Generator
-Create `src/utils/mockKnowledgeGraph.js`:
-```javascript
-export class MockKnowledgeGraphGenerator {
-  constructor(existingDocuments) {
-    this.documents = existingDocuments;
-    this.conceptBank = ['pricing', 'security', 'integration', 'performance', 'scalability', 'compliance', 'architecture', 'migration'];
-  }
+## IMPLEMENTATION REQUIREMENTS
 
-  generateMockGraph() {
-    const nodes = this.createNodes();
-    const links = this.createRelationships(nodes);
-    return { nodes, links };
-  }
-
-  createNodes() {
-    const nodes = [];
-    
-    // Convert real documents to nodes
-    this.documents.forEach(doc => {
-      nodes.push({
-        id: doc.id,
-        name: doc.file_name,
-        type: 'document',
-        position: this.calculateMockPosition(doc),
-        metadata: {
-          fileType: doc.file_type,
-          uploadDate: doc.created_at,
-          wordCount: doc.metadata?.word_count || 1000,
-          usageCount: Math.floor(Math.random() * 20),
-          isGlobal: false,
-          accountId: doc.account_id
-        },
-        visual: {
-          color: this.getColorByType(doc.file_type),
-          size: 10 + Math.log(doc.metadata?.word_count || 1000) * 2,
-          icon: this.getIconByType(doc.file_type),
-          glow: false
-        }
-      });
-    });
-    
-    // Add mock global knowledge nodes
-    ['Company Playbook', 'Brand Guidelines', 'Security Standards'].forEach((name, i) => {
-      nodes.push({
-        id: `global-${i}`,
-        name,
-        type: 'global',
-        position: { x: 0, y: i * 50 - 50, z: 0 },
-        metadata: { isGlobal: true, usageCount: 50 + Math.floor(Math.random() * 50) },
-        visual: { color: '#FFD700', size: 20, icon: '🌐', glow: true }
-      });
-    });
-    
-    return nodes;
-  }
-
-  createRelationships(nodes) {
-    const relationships = [];
-    nodes.forEach(node => {
-      if (node.type === 'document') {
-        // Create 2-4 connections per document
-        const connectionCount = Math.floor(Math.random() * 3) + 2;
-        const candidates = nodes.filter(n => n.id !== node.id && n.type === 'document');
-        
-        for (let i = 0; i < connectionCount && i < candidates.length; i++) {
-          const target = candidates[Math.floor(Math.random() * candidates.length)];
-          relationships.push({
-            source: node.id,
-            target: target.id,
-            value: 0.6 + Math.random() * 0.4 // Mock similarity 0.6-1.0
-          });
-        }
-        
-        // Some connect to global knowledge
-        if (Math.random() > 0.7) {
-          const globalNode = nodes.find(n => n.type === 'global');
-          if (globalNode) {
-            relationships.push({
-              source: node.id,
-              target: globalNode.id,
-              value: 0.8
-            });
-          }
-        }
-      }
-    });
-    return relationships;
-  }
-
-  calculateMockPosition(doc) {
-    const typePositions = {
-      'application/pdf': { x: -100, y: 0 },
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { x: 100, y: 0 },
-      'text/plain': { x: 0, y: -100 }
-    };
-    const base = typePositions[doc.file_type] || { x: 0, y: 100 };
-    return {
-      x: base.x + (Math.random() - 0.5) * 100,
-      y: base.y + (Math.random() - 0.5) * 100,
-      z: (Math.random() - 0.5) * 50
-    };
-  }
-
-  getColorByType(fileType) {
-    const colors = {
-      'application/pdf': '#FF6B6B',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '#4ECDC4',
-      'text/plain': '#45B7D1'
-    };
-    return colors[fileType] || '#96CEB4';
-  }
-
-  getIconByType(fileType) {
-    const icons = {
-      'application/pdf': '📑',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '📄',
-      'text/plain': '📝'
-    };
-    return icons[fileType] || '📋';
+### Technical Stack (EXACT VERSIONS)
+```json
+{
+  "dependencies": {
+    "react-force-graph-2d": "^1.23.0",
+    "d3-force": "^3.0.0",
+    "uuid": "^9.0.0"
   }
 }
 ```
 
-### Step 3: Create Knowledge Graph Component
-Create `src/components/KnowledgeGraph/KnowledgeGraph.jsx`:
+### Architecture Constraints
+- **NO backend changes** - Work with existing Supabase schema
+- **Frontend storage only** - localStorage for persistent data, sessionStorage for cache
+- **Client-side processing** - All calculations in browser
+- **Progressive enhancement** - Must work without Web Workers
+
+## PHASE 1: INSTALL AND BASIC 2D GRAPH
+
+### Task 1: Install Dependencies (DO THIS FIRST!)
+```bash
+npm install --save react-force-graph-2d@1.23.0 d3-force@3.0.0 uuid@9.0.0
+```
+
+### Task 2: Create Mock Data Generator (JavaScript)
+
+Create `src/services/knowledgeGraph/mockDataGenerator.js`:
+
 ```javascript
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import ForceGraph3D from 'react-force-graph-3d';
-import { MockKnowledgeGraphGenerator } from '../../utils/mockKnowledgeGraph';
-import { supabase } from '../../supabaseClient';
-import './KnowledgeGraph.css';
+// Mock data generator for Knowledge Graph visualization
+// CRITICAL: This is JAVASCRIPT not TypeScript
 
-const KnowledgeGraph = ({ 
-  accountId, 
-  documents = [], 
-  viewMode = 'account', // 'account', 'global', or 'both'
-  height = 600,
-  showControls = true,
-  showUpload = true,
-  onNodeClick,
-  onFileDrop
-}) => {
-  const [graphData, setGraphData] = useState({ nodes: [], links: [] });
-  const [hoveredNode, setHoveredNode] = useState(null);
-  const [selectedNode, setSelectedNode] = useState(null);
-  const [accessedNodes, setAccessedNodes] = useState(new Set());
-  const [draggedFile, setDraggedFile] = useState(null);
-  const [previewConnections, setPreviewConnections] = useState([]);
-  const graphRef = useRef();
+import { v4 as uuidv4 } from 'uuid';
 
-  // Initialize with mock data
-  useEffect(() => {
-    const generator = new MockKnowledgeGraphGenerator(documents);
-    const mockData = generator.generateMockGraph();
-    setGraphData(mockData);
-  }, [documents]);
+export class MockKnowledgeGraphGenerator {
+  constructor(documents, seed = Date.now()) {
+    this.documents = documents;
+    this.rngSeed = seed;
+  }
 
-  // Add real-time subscription
-  useEffect(() => {
-    if (!accountId) return;
+  // Seeded random for reproducible layouts
+  seededRandom() {
+    this.rngSeed = (this.rngSeed * 9301 + 49297) % 233280;
+    return this.rngSeed / 233280;
+  }
+
+  generateMockGraph() {
+    const nodes = this.createNodes();
+    const links = this.createLinks(nodes);
     
-    const channel = supabase
-      .channel(`graph-${accountId}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'chat_messages',
-        filter: `account_id=eq.${accountId}`
-      }, (payload) => {
-        if (payload.new.message_type === 'event' && 
-            payload.new.event_data?.type === 'retrieval_complete') {
-          
-          // Extract accessed documents
-          const accessedDocs = payload.new.event_data.accessed_documents || [];
-          
-          // Trigger visual pulses
-          accessedDocs.forEach((doc, index) => {
-            setTimeout(() => {
-              setAccessedNodes(prev => new Set([...prev, doc.id]));
-              
-              // Auto-remove after animation
-              setTimeout(() => {
-                setAccessedNodes(prev => {
-                  const next = new Set(prev);
-                  next.delete(doc.id);
-                  return next;
-                });
-              }, 3000);
-            }, index * 200);
+    return { nodes, links };
+  }
+
+  createNodes() {
+    return this.documents.map((doc, index) => ({
+      id: doc.id || uuidv4(),
+      name: doc.file_name,
+      type: 'document',
+      // DO NOT modify these properties directly during runtime!
+      __nodeData: {
+        fileType: doc.file_type,
+        uploadDate: doc.created_at,
+        accountId: doc.account_id,
+        isGlobal: false, // We'll use frontend storage for this
+        color: this.getColorByType(doc.file_type),
+        size: 5 + Math.random() * 10
+      }
+    }));
+  }
+
+  createLinks(nodes) {
+    const links = [];
+    const maxLinks = Math.min(nodes.length * 2, 50);
+    
+    // Create some mock relationships
+    for (let i = 0; i < nodes.length && links.length < maxLinks; i++) {
+      const numConnections = Math.floor(this.seededRandom() * 3) + 1;
+      
+      for (let j = 0; j < numConnections; j++) {
+        const targetIdx = Math.floor(this.seededRandom() * nodes.length);
+        if (targetIdx !== i) {
+          links.push({
+            source: nodes[i].id,
+            target: nodes[targetIdx].id,
+            value: this.seededRandom()
           });
         }
-      })
-      .subscribe();
-      
-    return () => channel.unsubscribe();
-  }, [accountId]);
-
-  // Handle node interactions
-  const handleNodeClick = useCallback((node) => {
-    setSelectedNode(node);
-    // Implement focus mode - show only connected nodes
-    if (graphRef.current) {
-      const { x, y, z } = node;
-      graphRef.current.cameraPosition({ x, y, z: z + 100 }, node, 1000);
-    }
-  }, []);
-
-  const handleNodeHover = useCallback((node) => {
-    setHoveredNode(node);
-    document.body.style.cursor = node ? 'pointer' : 'default';
-  }, []);
-
-  // Drag and drop handlers
-  const handleDragOver = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (e.dataTransfer.items && e.dataTransfer.items[0]) {
-      const file = e.dataTransfer.items[0];
-      setDraggedFile({ name: file.name, type: file.type });
-      
-      // Calculate preview connections
-      const mockConnections = graphData.nodes
-        .filter(n => n.type === 'document')
-        .map(node => ({
-          nodeId: node.id,
-          similarity: 0.5 + Math.random() * 0.5,
-          node
-        }))
-        .sort((a, b) => b.similarity - a.similarity)
-        .slice(0, 5);
-      
-      setPreviewConnections(mockConnections);
-    }
-  }, [graphData]);
-
-  const handleDrop = useCallback(async (e) => {
-    e.preventDefault();
-    const files = [...e.dataTransfer.files];
-    
-    if (files[0]) {
-      const file = files[0];
-      
-      // Show processing state
-      const tempNode = {
-        id: `temp-${Date.now()}`,
-        name: file.name,
-        type: 'document',
-        position: { x: 0, y: 0, z: 0 },
-        metadata: { isProcessing: true },
-        visual: { 
-          color: '#00FF00', 
-          size: 20, 
-          glow: true,
-          icon: '⏳'
-        }
-      };
-      
-      // Add temporary node
-      setGraphData(prev => ({
-        nodes: [...prev.nodes, tempNode],
-        links: prev.links
-      }));
-      
-      try {
-        // Process file (reuse existing documentProcessor)
-        // Assuming documentProcessor is imported or available globally
-        const result = await documentProcessor.processFile(file);
-        
-        // Save to database
-        const { data, error } = await supabase
-          .from('account_data_sources')
-          .insert({
-            account_id: accountId,
-            file_name: file.name,
-            file_type: file.type,
-            content: result.html,
-            metadata: result.metadata,
-            // Mock embedding for now
-            graph_position: { x: 0, y: 0, z: 0 }
-          })
-          .select()
-          .single();
-          
-        if (!error && data) {
-          // Replace temp node with real node
-          setGraphData(prev => ({
-            nodes: prev.nodes.map(n => 
-              n.id === tempNode.id ? {
-                ...n,
-                id: data.id,
-                metadata: { ...n.metadata, isProcessing: false },
-                visual: { ...n.visual, icon: '✅' }
-              } : n
-            ),
-            links: [
-              ...prev.links,
-              // Add mock connections
-              ...previewConnections.map(conn => ({
-                source: data.id,
-                target: conn.nodeId,
-                value: conn.similarity
-              }))
-            ]
-          }));
-          
-          // Animate integration
-          setTimeout(() => {
-            if (graphRef.current) {
-              graphRef.current.zoomToFit(400);
-            }
-          }, 500);
-        }
-      } catch (error) {
-        console.error('Upload failed:', error);
-        // Remove temp node on error
-        setGraphData(prev => ({
-          nodes: prev.nodes.filter(n => n.id !== tempNode.id),
-          links: prev.links
-        }));
       }
     }
     
-    setDraggedFile(null);
-    setPreviewConnections([]);
-  }, [accountId, previewConnections]);
+    return links;
+  }
 
-  const handleDragLeave = useCallback(() => {
-    setDraggedFile(null);
-    setPreviewConnections([]);
-  }, []);
-
-  // Simulate AI access
-  const simulateAIAccess = useCallback((query) => {
-    // Mock: Pulse random nodes as if AI is accessing them
-    const nodesToAccess = graphData.nodes
-      .filter(n => n.type === 'document')
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 5);
+  getColorByType(fileType) {
+    const colors = {
+      'application/pdf': '#ef4444',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '#3b82f6',
+      'text/plain': '#10b981',
+      'text/markdown': '#8b5cf6',
+      'application/json': '#f59e0b',
+      'text/csv': '#059669'
+    };
     
-    nodesToAccess.forEach((node, index) => {
-      setTimeout(() => {
-        setAccessedNodes(prev => new Set([...prev, node.id]));
-        
-        // Remove pulse after 2 seconds
-        setTimeout(() => {
-          setAccessedNodes(prev => {
-            const next = new Set(prev);
-            next.delete(node.id);
-            return next;
-          });
-        }, 2000);
-      }, index * 500);
+    return colors[fileType] || '#6b7280';
+  }
+}
+```
+
+### Task 3: Create the Main Knowledge Graph Component (2D ONLY)
+
+Create `src/components/KnowledgeGraph/KnowledgeGraph.jsx`:
+
+```javascript
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import ForceGraph2D from 'react-force-graph-2d';
+import { MockKnowledgeGraphGenerator } from '../../services/knowledgeGraph/mockDataGenerator';
+import { knowledgeStorage } from '../../utils/knowledgeStorage';
+import './KnowledgeGraph.css';
+
+const KnowledgeGraph = ({ 
+  documents = [], 
+  accountId, 
+  viewMode = 'account',
+  height = 600,
+  width = 800,
+  onNodeClick,
+  onFileDrop,
+  className = ''
+}) => {
+  // CRITICAL: Use React state for ALL interactive properties
+  const [graphData, setGraphData] = useState({ nodes: [], links: [] });
+  const [highlightedNodeId, setHighlightedNodeId] = useState(null);
+  const [selectedNode, setSelectedNode] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dimensions, setDimensions] = useState({ width, height });
+  
+  const graphRef = useRef();
+  const containerRef = useRef();
+  
+  // Generate graph data
+  useEffect(() => {
+    if (documents.length === 0) return;
+    
+    // Filter based on view mode using frontend storage
+    const filteredDocs = documents.filter(doc => {
+      const isGlobal = knowledgeStorage.isGlobal(doc.id);
+      if (viewMode === 'global') return isGlobal;
+      if (viewMode === 'account') return !isGlobal;
+      return true; // 'both'
     });
-  }, [graphData]);
-
-  // Custom node rendering
-  const nodeThreeObject = useCallback((node) => {
-    if (accessedNodes.has(node.id)) {
-      // Create pulsing effect for accessed nodes
-      const geometry = new THREE.SphereGeometry(node.visual.size * 1.5);
-      const material = new THREE.MeshBasicMaterial({
-        color: node.visual.color,
-        transparent: true,
-        opacity: 0.6
-      });
-      const mesh = new THREE.Mesh(geometry, material);
-      
-      // Add pulse animation
-      mesh.scale.set(1, 1, 1);
-      const animate = () => {
-        mesh.scale.x = mesh.scale.y = mesh.scale.z = 1 + Math.sin(Date.now() * 0.003) * 0.3;
-        requestAnimationFrame(animate);
-      };
-      animate();
-      
-      return mesh;
+    
+    const generator = new MockKnowledgeGraphGenerator(filteredDocs, accountId?.charCodeAt(0));
+    const data = generator.generateMockGraph();
+    setGraphData(data);
+  }, [documents, viewMode, accountId]);
+  
+  // CRITICAL: Handle node hover WITHOUT modifying node properties
+  const handleNodeHover = useCallback((node) => {
+    setHighlightedNodeId(node ? node.id : null);
+  }, []);
+  
+  const handleNodeClick = useCallback((node) => {
+    setSelectedNode(node);
+    if (onNodeClick) {
+      onNodeClick(node);
     }
-    return false; // Use default rendering
-  }, [accessedNodes]);
-
-  // Adjust container height
-  const containerBaseStyles = {
-    position: 'relative',
-    width: '100%',
-    background: 'linear-gradient(135deg, #0a0f1e 0%, #1a0f2e 100%)',
-    borderRadius: '12px',
-    overflow: 'hidden',
-  };
-
-  const containerStyle = {
-    height: `${height}px`,
-    ...containerBaseStyles
-  };
-
-  // Filter documents based on viewMode
-  const filteredDocuments = useMemo(() => {
-    if (viewMode === 'global') {
-      return documents.filter(doc => doc.is_global === true);
-    } else if (viewMode === 'account') {
-      return documents.filter(doc => !doc.is_global);
+  }, [onNodeClick]);
+  
+  // Custom node rendering with state-based styling
+  const nodeCanvasObject = useCallback((node, ctx, globalScale) => {
+    const isHighlighted = node.id === highlightedNodeId;
+    const nodeData = node.__nodeData || {};
+    
+    // Draw node circle
+    ctx.beginPath();
+    ctx.arc(node.x, node.y, nodeData.size || 5, 0, 2 * Math.PI);
+    ctx.fillStyle = isHighlighted 
+      ? '#3b82f6' 
+      : (nodeData.color || '#6b7280');
+    ctx.fill();
+    
+    // Draw highlight ring if highlighted
+    if (isHighlighted) {
+      ctx.strokeStyle = '#60a5fa';
+      ctx.lineWidth = 2;
+      ctx.stroke();
     }
-    return documents; // 'both'
-  }, [documents, viewMode]);
-
+    
+    // Draw label
+    if (globalScale > 0.5) {
+      ctx.font = `${12/globalScale}px Inter, system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(node.name, node.x, node.y - (nodeData.size || 5) - 2);
+    }
+  }, [highlightedNodeId]);
+  
+  // Handle file drop
+  const handleDragEnter = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+  
+  const handleDragLeave = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+  
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+  
+  const handleDrop = useCallback(async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0 && onFileDrop) {
+      await onFileDrop(files[0]);
+    }
+  }, [onFileDrop]);
+  
+  // Responsive sizing
+  useEffect(() => {
+    const handleResize = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setDimensions({
+          width: rect.width,
+          height: height
+        });
+      }
+    };
+    
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [height]);
+  
   return (
-    <div 
-      className="knowledge-graph-container"
-      style={containerStyle}
-      onDragOver={showUpload ? handleDragOver : undefined}
-      onDrop={showUpload ? handleDrop : undefined}
-      onDragLeave={showUpload ? handleDragLeave : undefined}
-    >
-      {/* Conditionally render controls */}
-      {showControls && (
-        <div className="graph-controls glass-panel">
-          <button onClick={() => simulateAIAccess('test query')} className="btn-volcanic">
-            Simulate AI Access
-          </button>
-          <button onClick={() => graphRef.current?.zoomToFit(400)} className="btn-volcanic">
-            Reset View
-          </button>
-        </div>
-      )}
-
-      {/* Node Details Panel */}
-      {selectedNode && (
-        <div className="node-details glass-panel">
-          <h3>{selectedNode.name}</h3>
-          <p>Type: {selectedNode.type}</p>
-          <p>Usage: {selectedNode.metadata?.usageCount || 0} times</p>
-          <button onClick={() => setSelectedNode(null)} className="btn-volcanic">
-            Close
-          </button>
-        </div>
-      )}
-
-      {/* Drag Preview */}
-      {draggedFile && (
-        <div className="drag-preview glass-panel">
-          <h4>Drop to add: {draggedFile.name}</h4>
-          <div className="preview-connections">
-            {previewConnections.map(conn => (
-              <div key={conn.nodeId} className="connection-preview">
-                <span>{Math.round(conn.similarity * 100)}% match with {conn.node.name}</span>
-              </div>
-            ))}
+    <div className={`knowledge-graph-wrapper ${className}`}>
+      <div 
+        ref={containerRef}
+        className={`knowledge-graph-container ${isDragging ? 'dragging' : ''}`}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
+        <ForceGraph2D
+          ref={graphRef}
+          graphData={graphData}
+          width={dimensions.width}
+          height={dimensions.height}
+          nodeCanvasObject={nodeCanvasObject}
+          onNodeHover={handleNodeHover}
+          onNodeClick={handleNodeClick}
+          backgroundColor="#0a0f1e"
+          linkColor={() => '#374151'}
+          linkOpacity={0.3}
+          linkWidth={1}
+          enableNodeDrag={true}
+          enableZoomInteraction={true}
+          enablePanInteraction={true}
+        />
+        
+        {/* Overlay UI Elements */}
+        {selectedNode && (
+          <NodeDetailsPanel 
+            node={selectedNode}
+            onClose={() => setSelectedNode(null)}
+            onMarkAsGlobal={(nodeId) => {
+              knowledgeStorage.markAsGlobal(nodeId);
+              // Trigger re-render
+              setGraphData({ ...graphData });
+            }}
+          />
+        )}
+        
+        {isDragging && (
+          <div className="drop-overlay">
+            <div className="drop-message">
+              Drop file to add to knowledge graph
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+    </div>
+  );
+};
 
-      {/* 3D Graph */}
-      <ForceGraph3D
-        ref={graphRef}
-        graphData={graphData}
-        nodeLabel="name"
-        nodeAutoColorBy="type"
-        nodeVal={node => node.visual.size}
-        nodeOpacity={0.9}
-        nodeThreeObject={nodeThreeObject}
-        nodeThreeObjectExtend={true}
-        linkOpacity={0.4}
-        linkWidth={link => link.value * 2}
-        linkDirectionalParticles={link => link.value > 0.8 ? 2 : 0}
-        linkDirectionalParticleSpeed={0.005}
-        onNodeClick={handleNodeClick}
-        onNodeHover={handleNodeHover}
-        backgroundColor="rgba(0, 0, 0, 0)"
-        showNavInfo={false}
-      />
+// Node details panel component
+const NodeDetailsPanel = ({ node, onClose, onMarkAsGlobal }) => {
+  const nodeData = node.__nodeData || {};
+  const isGlobal = knowledgeStorage.isGlobal(node.id);
+  
+  return (
+    <div className="node-details-panel glass-panel">
+      <button className="close-btn" onClick={onClose}>×</button>
+      <h3>{node.name}</h3>
+      <div className="node-info">
+        <p>Type: {nodeData.fileType || 'Unknown'}</p>
+        <p>Uploaded: {new Date(nodeData.uploadDate).toLocaleDateString()}</p>
+        <p>Status: {isGlobal ? '🌐 Global' : '📁 Account-specific'}</p>
+      </div>
+      {!isGlobal && (
+        <button 
+          className="mark-global-btn"
+          onClick={() => onMarkAsGlobal(node.id)}
+        >
+          Mark as Global Knowledge
+        </button>
+      )}
     </div>
   );
 };
@@ -505,498 +351,514 @@ const KnowledgeGraph = ({
 export default KnowledgeGraph;
 ```
 
-### Step 4: Add Styles
+### Task 4: Create Frontend Storage Service
+
+Create `src/utils/knowledgeStorage.js`:
+
+```javascript
+// Frontend-only storage for global knowledge markers
+const GLOBAL_KNOWLEDGE_KEY = 'se_auto_global_knowledge';
+
+export const knowledgeStorage = {
+  // Mark document as global
+  markAsGlobal(documentId) {
+    const globals = this.getGlobalDocuments();
+    if (!globals.includes(documentId)) {
+      globals.push(documentId);
+      localStorage.setItem(GLOBAL_KNOWLEDGE_KEY, JSON.stringify(globals));
+    }
+  },
+  
+  // Get all global document IDs
+  getGlobalDocuments() {
+    try {
+      const stored = localStorage.getItem(GLOBAL_KNOWLEDGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      console.error('Error reading global documents:', e);
+      return [];
+    }
+  },
+  
+  // Check if document is marked as global
+  isGlobal(documentId) {
+    return this.getGlobalDocuments().includes(documentId);
+  },
+  
+  // Remove global marker
+  unmarkAsGlobal(documentId) {
+    const globals = this.getGlobalDocuments();
+    const filtered = globals.filter(id => id !== documentId);
+    localStorage.setItem(GLOBAL_KNOWLEDGE_KEY, JSON.stringify(filtered));
+  }
+};
+```
+
+### Task 5: Create Stunning CSS Styles
+
 Create `src/components/KnowledgeGraph/KnowledgeGraph.css`:
+
 ```css
+/* Knowledge Graph Styles - Premium glassmorphic design */
+.knowledge-graph-wrapper {
+  position: relative;
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(10, 15, 30, 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  box-shadow: 
+    0 0 40px rgba(59, 130, 246, 0.1),
+    inset 0 0 20px rgba(10, 15, 30, 0.5);
+}
+
 .knowledge-graph-container {
   position: relative;
   width: 100%;
-  height: 600px;
-  background: linear-gradient(135deg, #0a0f1e 0%, #1a0f2e 100%);
-  border-radius: 12px;
-  overflow: hidden;
+  transition: all 0.3s ease;
 }
 
-.graph-controls {
-  position: absolute;
-  top: 20px;
-  left: 20px;
-  z-index: 10;
-  display: flex;
-  gap: 10px;
+.knowledge-graph-container.dragging {
+  border: 2px dashed #3b82f6;
+  background: rgba(59, 130, 246, 0.05);
 }
 
-.node-details {
+/* Node details panel */
+.node-details-panel {
   position: absolute;
   top: 20px;
   right: 20px;
   width: 300px;
-  z-index: 10;
   padding: 20px;
+  background: rgba(17, 24, 39, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 12px;
+  color: white;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.3s ease;
 }
 
-.drag-preview {
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.node-details-panel h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #60a5fa;
+}
+
+.node-details-panel .close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  font-size: 24px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.node-details-panel .close-btn:hover {
+  color: #ef4444;
+}
+
+.node-info p {
+  margin: 8px 0;
+  font-size: 14px;
+  color: #d1d5db;
+}
+
+.mark-global-btn {
+  margin-top: 16px;
+  width: 100%;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mark-global-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+/* Drop overlay */
+.drop-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(59, 130, 246, 0.1);
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+}
+
+.drop-message {
+  padding: 20px 40px;
+  background: rgba(59, 130, 246, 0.9);
+  color: white;
+  font-size: 18px;
+  font-weight: 500;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+}
+
+/* Graph controls */
+.graph-controls {
   position: absolute;
   bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 20px;
+  display: flex;
+  gap: 8px;
   z-index: 10;
-  padding: 20px;
-  max-width: 400px;
 }
 
-.connection-preview {
-  padding: 8px;
-  margin: 4px 0;
-  background: rgba(0, 255, 255, 0.1);
-  border-radius: 4px;
+.graph-control-btn {
+  padding: 8px 12px;
+  background: rgba(17, 24, 39, 0.9);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 8px;
+  color: #d1d5db;
   font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-/* Pulse animation for AI access */
-@keyframes pulse {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.5); opacity: 0.5; }
-  100% { transform: scale(1); opacity: 1; }
+.graph-control-btn:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #3b82f6;
+  color: white;
 }
 
-.accessing {
-  animation: pulse 2s infinite;
+/* Loading state */
+.graph-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  color: #60a5fa;
+  font-size: 18px;
+}
+
+.graph-loading::after {
+  content: '';
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin-left: 10px;
+  border: 2px solid #60a5fa;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 ```
 
-### Step 5: Integrate into ProspectDetailPage
+### Task 6: Integrate into ProspectDetailPage
+
 Update `src/pages/ProspectDetailPage.jsx`:
+
 ```javascript
 // Add imports
-import KnowledgeGraph from '../components/KnowledgeGraph/KnowledgeGraph';
+import React, { lazy, Suspense } from 'react';
+const KnowledgeGraph = lazy(() => import('../components/KnowledgeGraph/KnowledgeGraph'));
 
 // Add state for view mode
-const [viewMode, setViewMode] = useState('list'); // 'list' or 'graph'
+const [viewMode, setViewMode] = useState(() => {
+  return localStorage.getItem(`viewMode_${id}`) || 'list';
+});
 
-// In the render, replace or add toggle for Context Files section:
-<div className="glass-panel">
-  <div className="px-8 py-6 border-b border-white/10 flex justify-between items-center">
-    <div>
-      <h2 className="text-2xl font-light text-white">🧠 AI Knowledge Base</h2>
-      <p className="text-sm text-white/50 mt-2">
-        Your AI's second brain - Documents here actively inform every response
-      </p>
-    </div>
-    <div className="flex gap-2">
-      <button
-        onClick={() => setViewMode('list')}
-        className={`px-4 py-2 rounded-lg transition-all ${
-          viewMode === 'list' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/60 hover:text-white'
-        }`}
-      >
-        List View
-      </button>
-      <button
-        onClick={() => setViewMode('graph')}
-        className={`px-4 py-2 rounded-lg transition-all ${
-          viewMode === 'graph' ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/60 hover:text-white'
-        }`}
-      >
-        Graph View
-      </button>
-    </div>
-  </div>
-  
-  <div className="px-8 py-8">
-    {viewMode === 'list' ? (
-      // Existing list view code
-      <>
-        <FileUploadDropzone onFileSelect={handleFileSelect} maxFiles={1} />
-        {/* ... existing list rendering ... */}
-      </>
-    ) : (
-      // New graph view
-      <KnowledgeGraph 
-        accountId={id}
-        documents={accountDataSources}
-        viewMode="account"
-        height={600}
-        showControls={true}
-        showUpload={true}
-        onFileDrop={handleFileSelect}
-      />
-    )}
-  </div>
+// Update view mode and persist
+const handleViewModeChange = (mode) => {
+  setViewMode(mode);
+  localStorage.setItem(`viewMode_${id}`, mode);
+};
+
+// Add view toggle buttons
+<div className="view-controls">
+  <button 
+    className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
+    onClick={() => handleViewModeChange('list')}
+  >
+    <span>📋</span> List View
+  </button>
+  <button 
+    className={`view-btn ${viewMode === 'graph' ? 'active' : ''}`}
+    onClick={() => handleViewModeChange('graph')}
+  >
+    <span>🧠</span> Graph View
+  </button>
 </div>
+
+// Render based on view mode
+{viewMode === 'graph' ? (
+  <Suspense fallback={<div className="graph-loading">Loading Knowledge Graph...</div>}>
+    <KnowledgeGraph
+      documents={documents}
+      accountId={id}
+      viewMode="account"
+      height={600}
+      onFileDrop={handleFileDrop}
+      onNodeClick={(node) => {
+        // Open document in editor
+        navigate(`/document/${node.id}`);
+      }}
+    />
+  </Suspense>
+) : (
+  // Existing list view
+  <div className="file-list">
+    {/* ... existing code ... */}
+  </div>
+)}
 ```
 
-### Step 6: Integrate into AccountDashboard
-Update `src/pages/AccountDashboard.jsx` to show a company-wide knowledge graph below the accounts:
+### Task 7: Integrate into AccountDashboard
+
+Update `src/pages/AccountDashboard.jsx`:
+
 ```javascript
 // Add imports
-import KnowledgeGraph from '../components/KnowledgeGraph/KnowledgeGraph';
+import React, { lazy, Suspense } from 'react';
+import { knowledgeStorage } from '../utils/knowledgeStorage';
+const KnowledgeGraph = lazy(() => import('../components/KnowledgeGraph/KnowledgeGraph'));
 
 // Add state for global documents
 const [globalDocuments, setGlobalDocuments] = useState([]);
+const [showGlobalKnowledge, setShowGlobalKnowledge] = useState(true);
 
-// Fetch global knowledge base documents
+// Fetch documents marked as global
+const fetchGlobalDocuments = async () => {
+  const globalIds = knowledgeStorage.getGlobalDocuments();
+  
+  if (globalIds.length > 0) {
+    const { data, error } = await supabase
+      .from('account_data_sources')
+      .select('*')
+      .in('id', globalIds)
+      .order('created_at', { ascending: false });
+      
+    if (data) {
+      setGlobalDocuments(data);
+    }
+  }
+};
+
+// Load on mount
 useEffect(() => {
-  const fetchGlobalDocuments = async () => {
-    try {
-      // For MVP, fetch all documents marked as global
-      const { data, error } = await supabase
-        .from('account_data_sources')
-        .select('*')
-        .eq('is_global', true)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setGlobalDocuments(data || []);
-    } catch (error) {
-      console.error('Failed to fetch global documents:', error);
+  fetchGlobalDocuments();
+  
+  // Subscribe to storage changes
+  const handleStorageChange = (e) => {
+    if (e.key === 'se_auto_global_knowledge') {
+      fetchGlobalDocuments();
     }
   };
   
-  fetchGlobalDocuments();
+  window.addEventListener('storage', handleStorageChange);
+  return () => window.removeEventListener('storage', handleStorageChange);
 }, []);
 
-// Add after the accounts grid, before the closing container div:
-{/* Company Knowledge Graph */}
-<div className="mt-12 glass-panel p-8">
-  <div className="mb-6">
-    <h2 className="text-3xl font-light text-white tracking-wide mb-2">
-      🌐 Company Knowledge Base
-    </h2>
-    <p className="text-sm text-white/60 font-light">
-      Your organization's shared knowledge that powers every account
+// Add below accounts grid
+{showGlobalKnowledge && globalDocuments.length > 0 && (
+  <div className="mt-12 glass-panel p-8">
+    <div className="flex justify-between items-center mb-6">
+      <h2 className="text-3xl font-light text-white">
+        🌐 Company Knowledge Base
+      </h2>
+      <button
+        onClick={() => setShowGlobalKnowledge(!showGlobalKnowledge)}
+        className="text-gray-400 hover:text-white"
+      >
+        {showGlobalKnowledge ? 'Hide' : 'Show'}
+      </button>
+    </div>
+    
+    <p className="text-gray-400 mb-6">
+      Shared templates, playbooks, and resources available across all accounts
     </p>
+    
+    <Suspense fallback={<div className="graph-loading">Loading Global Knowledge...</div>}>
+      <KnowledgeGraph
+        documents={globalDocuments}
+        accountId="global"
+        viewMode="global"
+        height={500}
+        showUpload={false}
+        onNodeClick={(node) => {
+          // Navigate to document
+          navigate(`/document/${node.id}`);
+        }}
+      />
+    </Suspense>
   </div>
-  
-  <KnowledgeGraph 
-    accountId="global" // Special ID for global view
-    documents={globalDocuments}
-    viewMode="global"
-    height={500} // Slightly smaller for dashboard view
-    showControls={true}
-    showUpload={false} // No direct upload from dashboard
-  />
-</div>
+)}
 ```
 
-### Step 7: Add Props Support to KnowledgeGraph
-Update `src/components/KnowledgeGraph/KnowledgeGraph.jsx` to accept additional props:
+## PHASE 2: PERFORMANCE OPTIMIZATIONS
+
+### Task 8: Add Performance Monitoring
+
+Create `src/components/KnowledgeGraph/hooks/useGraphPerformance.js`:
+
 ```javascript
-const KnowledgeGraph = ({ 
-  accountId, 
-  documents = [], 
-  viewMode = 'account', // 'account', 'global', or 'both'
-  height = 600,
-  showControls = true,
-  showUpload = true,
-  onNodeClick,
-  onFileDrop
-}) => {
-  // ... existing state ...
+import { useState, useEffect, useRef } from 'react';
 
-  // Adjust container height
-  const containerStyle = {
-    height: `${height}px`,
-    ...containerBaseStyles
-  };
-
-  // Filter documents based on viewMode
-  const filteredDocuments = useMemo(() => {
-    if (viewMode === 'global') {
-      return documents.filter(doc => doc.is_global === true);
-    } else if (viewMode === 'account') {
-      return documents.filter(doc => !doc.is_global);
-    }
-    return documents; // 'both'
-  }, [documents, viewMode]);
-
-  // ... rest of component logic ...
-
-  return (
-    <div 
-      className="knowledge-graph-container"
-      style={containerStyle}
-      onDragOver={showUpload ? handleDragOver : undefined}
-      onDrop={showUpload ? handleDrop : undefined}
-      onDragLeave={showUpload ? handleDragLeave : undefined}
-    >
-      {/* Conditionally render controls */}
-      {showControls && (
-        <div className="graph-controls glass-panel">
-          {/* ... existing controls ... */}
-        </div>
-      )}
+export const useGraphPerformance = (graphData) => {
+  const [fps, setFps] = useState(60);
+  const [nodeCount, setNodeCount] = useState(0);
+  const [renderTime, setRenderTime] = useState(0);
+  
+  const frameCount = useRef(0);
+  const lastTime = useRef(performance.now());
+  
+  useEffect(() => {
+    setNodeCount(graphData.nodes.length);
+  }, [graphData]);
+  
+  useEffect(() => {
+    let animationId;
+    
+    const measureFPS = () => {
+      frameCount.current++;
+      const currentTime = performance.now();
       
-      {/* ... rest of component ... */}
+      // Update FPS every second
+      if (currentTime >= lastTime.current + 1000) {
+        setFps(Math.round(frameCount.current * 1000 / (currentTime - lastTime.current)));
+        frameCount.current = 0;
+        lastTime.current = currentTime;
+      }
+      
+      animationId = requestAnimationFrame(measureFPS);
+    };
+    
+    measureFPS();
+    
+    return () => {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+    };
+  }, []);
+  
+  return {
+    fps,
+    nodeCount,
+    renderTime,
+    isPerformant: fps > 30 && renderTime < 100
+  };
+};
+```
+
+### Task 9: Add Graph Controls
+
+Create `src/components/KnowledgeGraph/components/GraphControls.jsx`:
+
+```javascript
+import React from 'react';
+
+export const GraphControls = ({ graphRef, onSearch, onReset, onScreenshot }) => {
+  const handleZoomIn = () => {
+    if (graphRef.current) {
+      graphRef.current.zoom(1.2);
+    }
+  };
+  
+  const handleZoomOut = () => {
+    if (graphRef.current) {
+      graphRef.current.zoom(0.8);
+    }
+  };
+  
+  const handleCenter = () => {
+    if (graphRef.current) {
+      graphRef.current.centerAt(0, 0, 1000);
+    }
+  };
+  
+  return (
+    <div className="graph-controls">
+      <button className="graph-control-btn" onClick={handleZoomIn} title="Zoom In">
+        +
+      </button>
+      <button className="graph-control-btn" onClick={handleZoomOut} title="Zoom Out">
+        −
+      </button>
+      <button className="graph-control-btn" onClick={handleCenter} title="Center">
+        ⊙
+      </button>
+      <button className="graph-control-btn" onClick={onReset} title="Reset">
+        ↻
+      </button>
+      <button className="graph-control-btn" onClick={onScreenshot} title="Screenshot">
+        📷
+      </button>
     </div>
   );
 };
 ```
 
-### Step 8: Update ProspectDetailPage for consistency
-Update the ProspectDetailPage integration to pass the new props:
-```javascript
-<KnowledgeGraph 
-  accountId={id}
-  documents={accountDataSources}
-  viewMode="account"
-  height={600}
-  showControls={true}
-  showUpload={true}
-  onFileDrop={handleFileSelect}
-/>
-```
+## TESTING CHECKLIST
 
-## 🎯 DUAL PLACEMENT BENEFITS
+### Before Starting Development
+- [ ] All dependencies installed (`npm install` successful)
+- [ ] Dev server runs without errors
+- [ ] No TypeScript files in project
+- [ ] Existing features still work
 
-### 1. AccountDashboard (Global View)
-- Shows company-wide knowledge base
-- Demonstrates organizational knowledge assets
-- Helps users understand shared resources
-- Encourages knowledge reuse across accounts
+### After Phase 1
+- [ ] 2D graph renders without errors
+- [ ] No freezing on node hover
+- [ ] Nodes highlight on hover using React state
+- [ ] Click opens details panel
+- [ ] File drop preview works
+- [ ] View toggle persists in localStorage
 
-### 2. ProspectDetailPage (Account View)
-- Shows account-specific documents
-- Enables drag-drop upload
-- Visualizes document relationships
-- Shows real-time AI access
+### After Phase 2
+- [ ] FPS counter shows 60fps with 100 nodes
+- [ ] Zoom/pan controls work smoothly
+- [ ] Global knowledge markers persist
+- [ ] Graph appears in both locations
+- [ ] No console errors
 
-## 🚀 PHASE 2: ADD REAL-TIME AI ACCESS VISUALIZATION
+## SUCCESS CRITERIA
 
-### Step 1: Subscribe to AI Events
-Update `KnowledgeGraph.jsx`:
-```javascript
-// Add real-time subscription
-useEffect(() => {
-  if (!accountId) return;
-  
-  const channel = supabase
-    .channel(`graph-${accountId}`)
-    .on('postgres_changes', {
-      event: 'INSERT',
-      schema: 'public',
-      table: 'chat_messages',
-      filter: `account_id=eq.${accountId}`
-    }, (payload) => {
-      if (payload.new.message_type === 'event' && 
-          payload.new.event_data?.type === 'retrieval_complete') {
-        
-        // Extract accessed documents
-        const accessedDocs = payload.new.event_data.accessed_documents || [];
-        
-        // Trigger visual pulses
-        accessedDocs.forEach((doc, index) => {
-          setTimeout(() => {
-            setAccessedNodes(prev => new Set([...prev, doc.id]));
-            
-            // Auto-remove after animation
-            setTimeout(() => {
-              setAccessedNodes(prev => {
-                const next = new Set(prev);
-                next.delete(doc.id);
-                return next;
-              });
-            }, 3000);
-          }, index * 200);
-        });
-      }
-    })
-    .subscribe();
-    
-  return () => channel.unsubscribe();
-}, [accountId]);
-```
+1. **Zero Backend Changes**: Works with existing Supabase schema
+2. **Smooth Performance**: 60fps with 1000 nodes
+3. **No Build Errors**: JavaScript-only implementation
+4. **No Freezing**: React state manages all interactions
+5. **Professional Polish**: Glassmorphic design that impresses
+6. **Immediate Deploy**: Can push to production today
 
-## 🎨 PHASE 3: ADD DRAG-DROP UPLOAD WITH PREVIEW
+## COMMON PITFALLS TO AVOID
 
-### Step 1: Enhance Drop Handler
-```javascript
-const handleDrop = async (e) => {
-  e.preventDefault();
-  const files = [...e.dataTransfer.files];
-  
-  if (files[0]) {
-    const file = files[0];
-    
-    // Show processing state
-    const tempNode = {
-      id: `temp-${Date.now()}`,
-      name: file.name,
-      type: 'document',
-      position: { x: 0, y: 0, z: 0 },
-      metadata: { isProcessing: true },
-      visual: { 
-        color: '#00FF00', 
-        size: 20, 
-        glow: true,
-        icon: '⏳'
-      }
-    };
-    
-    // Add temporary node
-    setGraphData(prev => ({
-      nodes: [...prev.nodes, tempNode],
-      links: prev.links
-    }));
-    
-    try {
-      // Process file (reuse existing documentProcessor)
-      const result = await documentProcessor.processFile(file);
-      
-      // Save to database
-      const { data, error } = await supabase
-        .from('account_data_sources')
-        .insert({
-          account_id: accountId,
-          file_name: file.name,
-          file_type: file.type,
-          content: result.html,
-          metadata: result.metadata,
-          // Mock embedding for now
-          graph_position: { x: 0, y: 0, z: 0 }
-        })
-        .select()
-        .single();
-        
-      if (!error && data) {
-        // Replace temp node with real node
-        setGraphData(prev => ({
-          nodes: prev.nodes.map(n => 
-            n.id === tempNode.id ? {
-              ...n,
-              id: data.id,
-              metadata: { ...n.metadata, isProcessing: false },
-              visual: { ...n.visual, icon: '✅' }
-            } : n
-          ),
-          links: [
-            ...prev.links,
-            // Add mock connections
-            ...previewConnections.map(conn => ({
-              source: data.id,
-              target: conn.nodeId,
-              value: conn.similarity
-            }))
-          ]
-        }));
-        
-        // Animate integration
-        setTimeout(() => {
-          if (graphRef.current) {
-            graphRef.current.zoomToFit(400);
-          }
-        }, 500);
-      }
-    } catch (error) {
-      console.error('Upload failed:', error);
-      // Remove temp node on error
-      setGraphData(prev => ({
-        nodes: prev.nodes.filter(n => n.id !== tempNode.id),
-        links: prev.links
-      }));
-    }
-  }
-};
-```
+1. **DO NOT** create any `.ts` or `.tsx` files
+2. **DO NOT** use `react-force-graph-3d` or `three.js`
+3. **DO NOT** modify node properties directly in callbacks
+4. **DO NOT** create new database tables or columns
+5. **DO NOT** forget to install dependencies first
+6. **DO NOT** use `process.env` - use `import.meta.env` for Vite
 
-## 🌐 PHASE 4: ADD GLOBAL KNOWLEDGE TOGGLE
-
-### Step 1: Add View Mode Toggle
-```javascript
-// Add to KnowledgeGraph component
-const [knowledgeMode, setKnowledgeMode] = useState('account'); // 'account', 'global', 'both'
-
-// Add toggle UI
-<div className="knowledge-mode-toggle glass-panel">
-  <button 
-    onClick={() => setKnowledgeMode('account')}
-    className={knowledgeMode === 'account' ? 'active' : ''}
-  >
-    Account Only
-  </button>
-  <button 
-    onClick={() => setKnowledgeMode('global')}
-    className={knowledgeMode === 'global' ? 'active' : ''}
-  >
-    Global Only
-  </button>
-  <button 
-    onClick={() => setKnowledgeMode('both')}
-    className={knowledgeMode === 'both' ? 'active' : ''}
-  >
-    Both
-  </button>
-</div>
-
-// Filter nodes based on mode
-const visibleNodes = graphData.nodes.filter(node => {
-  if (knowledgeMode === 'account') return !node.metadata.isGlobal;
-  if (knowledgeMode === 'global') return node.metadata.isGlobal;
-  return true; // 'both'
-});
-```
-
-## 📊 PHASE 5: ADD PERFORMANCE OPTIMIZATIONS
-
-### Step 1: Implement Level of Detail
-```javascript
-// Add to nodeThreeObject
-const nodeThreeObject = useCallback((node) => {
-  const camera = graphRef.current?.camera();
-  if (!camera) return false;
-  
-  const distance = camera.position.distanceTo(node);
-  
-  // Skip rendering for distant nodes
-  if (distance > 500) {
-    const geometry = new THREE.BoxGeometry(5, 5, 5);
-    const material = new THREE.MeshBasicMaterial({ color: node.visual.color });
-    return new THREE.Mesh(geometry, material);
-  }
-  
-  // Full detail for close nodes
-  if (distance < 100) {
-    // Add text label, icon, etc.
-  }
-  
-  return false; // Default rendering
-}, []);
-```
-
-## 🎯 SUCCESS CRITERIA
-
-1. **Visual Impact**: Graph renders smoothly with 100+ nodes
-2. **Intuitive Interaction**: Drag-drop feels magical
-3. **Real-time Feedback**: AI access creates immediate pulses
-4. **Clear Hierarchy**: Global vs account knowledge obvious
-5. **Performance**: 60fps with typical document counts
-
-## 💡 PRO TIPS
-
-1. Start with mock data - don't wait for embeddings
-2. Use feature flags to ship incrementally
-3. Add tooltips explaining what connections mean
-4. Include a "tutorial mode" for first-time users
-5. Cache graph layouts in localStorage
-6. Use Web Workers for physics calculations if needed
-7. Add keyboard shortcuts (spacebar to reset view, etc.)
-
-## 🚨 CRITICAL DETAILS
-
-- Keep existing file upload working in parallel
-- Don't break the current Context Files functionality
-- Use the same glass-panel styling for consistency
-- Ensure mobile responsiveness (fallback to list view)
-- Add loading states for all async operations
-- Handle errors gracefully with user-friendly messages
-
-## 🎬 DEMO SCRIPT
-
-1. "Here's your AI's knowledge base - every document you've uploaded"
-2. *Drag file over graph* "Watch as we add new knowledge..."
-3. *Drop file* "The AI instantly understands how this connects to everything else"
-4. *Click AI generate* "Now watch which documents the AI accesses to answer your question"
-5. *Nodes pulse* "You can see exactly what knowledge is being used"
-6. *Toggle to global view* "And here's your company's shared knowledge that enhances every account"
-
-BUILD THIS EXACTLY AS SPECIFIED. THE MOCK VERSION ALONE WILL BE INCREDIBLE. EMBEDDINGS CAN COME LATER. 
+This implementation will create a stunning, performant knowledge graph that works immediately without any backend changes or build issues.

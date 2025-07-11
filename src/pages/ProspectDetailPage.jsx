@@ -6,6 +6,7 @@ import documentProcessor from '../services/documentProcessor'
 import TemplateSelectionModal from '../components/TemplateSelectionModal'
 import DocumentCreationModal from '../components/DocumentCreationModal'
 import AccountDeletionModal from '../components/AccountDeletionModal'
+import { KnowledgeGraph } from '../components/KnowledgeGraph'
 
 function ProspectDetailPage() {
   const { id } = useParams()
@@ -24,6 +25,10 @@ function ProspectDetailPage() {
   const [isSavingAccount, setIsSavingAccount] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+  const [viewMode, setViewMode] = useState(() => {
+    // Load view preference from localStorage
+    return localStorage.getItem(`viewMode_${id}`) || 'list'
+  })
 
   const stageOptions = ['Discovery', 'Pre-Sales', 'Pilot Deployment', 'Post-Sale']
 
@@ -951,77 +956,120 @@ function ProspectDetailPage() {
         {/* File Upload Section */}
         <div className="glass-panel">
           <div className="px-8 py-6 border-b border-white/10">
-            <h2 className="text-2xl font-light text-white">Context Files</h2>
-            <p className="text-sm text-white/50 mt-2">Upload documents to extract and edit their content</p>
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-light text-white">Context Files</h2>
+                <p className="text-sm text-white/50 mt-2">Upload documents to extract and edit their content</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => {
+                    setViewMode('list')
+                    localStorage.setItem(`viewMode_${id}`, 'list')
+                  }}
+                  className={`px-4 py-2 rounded-lg transition-all ${
+                    viewMode === 'list' 
+                      ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' 
+                      : 'bg-white/5 text-white/70 border border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => {
+                    setViewMode('graph')
+                    localStorage.setItem(`viewMode_${id}`, 'graph')
+                  }}
+                  className={`px-4 py-2 rounded-lg transition-all ${
+                    viewMode === 'graph' 
+                      ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' 
+                      : 'bg-white/5 text-white/70 border border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
           </div>
           <div className="px-8 py-8">
-            <FileUploadDropzone 
-              onFileSelect={handleFileSelect}
-              maxFiles={1}
-            />
-            
-            {/* Processing Progress */}
-            {processingFile && !processingProgress.message.includes('for editing') && (
-              <div className="mt-6 glass-panel p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-white/70">{processingProgress.message}</span>
-                  <span className="text-sm text-cyan-400">{Math.round(processingProgress.percent)}%</span>
-                </div>
-                <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400 transition-all duration-300"
-                    style={{ width: `${processingProgress.percent}%` }}
-                  />
-                </div>
-              </div>
-            )}
-            
-            {/* Uploaded Documents */}
-            {dataSources.length > 0 && (
-              <div className="mt-8">
-                <h3 className="text-lg font-light text-white mb-4">Processed Documents</h3>
-                <div className="space-y-3">
-                  {dataSources.map(doc => (
-                    <div 
-                      key={doc.id}
-                      className="glass-panel p-4 hover:bg-white/[0.08] transition-all"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <h4 className="font-medium text-white">{doc.file_name || doc.name}</h4>
-                          <p className="text-sm text-white/50 mt-1">
-                            Processed {new Date(doc.created_at).toLocaleString()}
-                          </p>
-                          {doc.metadata?.warning && (
-                            <p className="text-sm text-yellow-400/70 mt-1">
-                              ⚠️ {doc.metadata.warning}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center space-x-2 ml-4">
-                          <button
-                            onClick={() => handleLoadIntoEditor(doc)}
-                            className="btn-volcanic text-sm px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled={true}
-                            title="Editing context documents will be available in a future update."
-                          >
-                            Edit in Editor
-                          </button>
-                          <button
-                            onClick={(e) => deleteReferenceDocument(doc.id, e)}
-                            className="p-2 hover:bg-red-500/20 rounded-lg transition-colors group"
-                            title="Remove reference file"
-                          >
-                            <svg className="w-5 h-5 text-red-400 hover:text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
+            {viewMode === 'list' ? (
+              <>
+                <FileUploadDropzone 
+                  onFileSelect={handleFileSelect}
+                  maxFiles={1}
+                />
+                
+                {/* Processing Progress */}
+                {processingFile && !processingProgress.message.includes('for editing') && (
+                  <div className="mt-6 glass-panel p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-white/70">{processingProgress.message}</span>
+                      <span className="text-sm text-cyan-400">{Math.round(processingProgress.percent)}%</span>
                     </div>
-                  ))}
-                </div>
-              </div>
+                    <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400 transition-all duration-300"
+                        style={{ width: `${processingProgress.percent}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+                
+                {/* Uploaded Documents */}
+                {dataSources.length > 0 && (
+                  <div className="mt-6">
+                    <h3 className="text-sm font-medium text-white/70 mb-3">Uploaded Documents</h3>
+                    <div className="space-y-3">
+                      {dataSources.map(doc => (
+                        <div key={doc.id} className="glass-panel p-4 hover:bg-white/5 transition-colors group">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-white font-medium">{doc.file_name}</p>
+                              <p className="text-sm text-white/50">
+                                {new Date(doc.created_at).toLocaleDateString()} • {doc.file_type}
+                              </p>
+                            </div>
+                            <div className="flex items-center space-x-2 ml-4">
+                              <button
+                                onClick={() => handleLoadIntoEditor(doc)}
+                                className="btn-volcanic text-sm px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={true}
+                                title="Editing context documents will be available in a future update."
+                              >
+                                Edit in Editor
+                              </button>
+                              <button
+                                onClick={(e) => deleteReferenceDocument(doc.id, e)}
+                                className="p-2 hover:bg-red-500/20 rounded-lg transition-colors group"
+                                title="Remove reference file"
+                              >
+                                <svg className="w-5 h-5 text-red-400 hover:text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <KnowledgeGraph
+                documents={dataSources}
+                accountId={id}
+                viewMode="account"
+                height={600}
+                showControls={true}
+                showUpload={true}
+                onFileDrop={handleFileSelect}
+                className="rounded-lg"
+              />
             )}
           </div>
         </div>

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import AccountCard from '../components/AccountCard';
 import AccountCreationModal from '../components/AccountCreationModal';
 import { supabase } from '../supabaseClient';
+import { KnowledgeGraph } from '../components/KnowledgeGraph';
+import { knowledgeStorage } from '../utils/knowledgeStorage';
 
 function AccountDashboard() {
   const navigate = useNavigate();
@@ -12,6 +14,9 @@ function AccountDashboard() {
   const [selectedStage, setSelectedStage] = useState('all');
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [creatingAccount, setCreatingAccount] = useState(false);
+  const [globalDocuments, setGlobalDocuments] = useState([]);
+  const [loadingGlobal, setLoadingGlobal] = useState(false);
+  const [showGlobalGraph, setShowGlobalGraph] = useState(false);
 
   useEffect(() => {
     const getSession = async () => {
@@ -74,6 +79,49 @@ function AccountDashboard() {
       setCreatingAccount(false);
     }
   };
+
+  const fetchGlobalDocuments = async () => {
+    try {
+      setLoadingGlobal(true);
+      
+      // Get all global document IDs from frontend storage
+      const globalIds = knowledgeStorage.getGlobalDocuments();
+      
+      if (globalIds.length === 0) {
+        setGlobalDocuments([]);
+        return;
+      }
+      
+      // Fetch the actual documents from account_data_sources
+      const { data, error } = await supabase
+        .from('account_data_sources')
+        .select('*')
+        .in('id', globalIds)
+        .order('created_at', { ascending: false });
+        
+      if (error) throw error;
+      
+      setGlobalDocuments(data || []);
+    } catch (error) {
+      console.error('Failed to fetch global documents:', error);
+      setGlobalDocuments([]);
+    } finally {
+      setLoadingGlobal(false);
+    }
+  };
+
+  // Load global documents on mount
+  useEffect(() => {
+    fetchGlobalDocuments();
+    
+    // Listen for global knowledge updates
+    const handleGlobalUpdate = () => {
+      fetchGlobalDocuments();
+    };
+    
+    window.addEventListener('globalKnowledgeUpdated', handleGlobalUpdate);
+    return () => window.removeEventListener('globalKnowledgeUpdated', handleGlobalUpdate);
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -185,6 +233,61 @@ function AccountDashboard() {
             </div>
           </div>
         )}
+      </div>
+      
+      {/* Global Knowledge Base Section */}
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="glass-panel">
+          <div className="px-8 py-6 border-b border-white/10">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-light text-white">Company Knowledge Base</h2>
+                <p className="text-sm text-white/50 mt-2">
+                  {globalDocuments.length} shared document{globalDocuments.length !== 1 ? 's' : ''} across all accounts
+                </p>
+              </div>
+              <button
+                onClick={() => setShowGlobalGraph(!showGlobalGraph)}
+                className={`px-4 py-2 rounded-lg transition-all ${
+                  showGlobalGraph 
+                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' 
+                    : 'bg-white/5 text-white/70 border border-white/10 hover:bg-white/10'
+                }`}
+              >
+                {showGlobalGraph ? 'Hide' : 'Show'} Knowledge Graph
+              </button>
+            </div>
+          </div>
+          
+          {showGlobalGraph && (
+            <div className="px-8 py-8">
+              {loadingGlobal ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-white/50">Loading global knowledge...</div>
+                </div>
+              ) : globalDocuments.length > 0 ? (
+                <KnowledgeGraph
+                  documents={globalDocuments}
+                  accountId="global"
+                  viewMode="global"
+                  height={600}
+                  showControls={true}
+                  showUpload={false}
+                  className="rounded-lg"
+                />
+              ) : (
+                <div className="text-center py-16">
+                  <svg className="w-16 h-16 mx-auto text-white/30 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                          d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  <p className="text-white/50 font-light">No global knowledge documents yet.</p>
+                  <p className="text-sm text-white/30 mt-2">Mark documents as global from individual accounts to share them here.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
       
       {/* Account Creation Modal */}
