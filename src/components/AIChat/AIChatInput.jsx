@@ -1,6 +1,13 @@
 import React, { useState, useRef, useCallback } from 'react';
+import { Send, Mic } from 'lucide-react';
 
-const AIChatInput = ({ onSendMessage, isDisabled }) => {
+const AIChatInput = ({ 
+  onSendMessage, 
+  isDisabled,
+  isListening,
+  isSpeechSupported,
+  toggleListening 
+}) => {
   const [message, setMessage] = useState('');
   const textareaRef = useRef(null);
 
@@ -35,6 +42,12 @@ const AIChatInput = ({ onSendMessage, isDisabled }) => {
     }
   }, []);
 
+  const handleToggleListening = () => {
+    if (!isDisabled && toggleListening) {
+      toggleListening(setMessage);
+    }
+  };
+
   return (
     <form className="ai-chat-input" onSubmit={handleSubmit}>
       <div className="input-wrapper">
@@ -43,30 +56,29 @@ const AIChatInput = ({ onSendMessage, isDisabled }) => {
           value={message}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          placeholder={isDisabled ? "AI is thinking..." : "Ask a question..."}
+          placeholder={isDisabled ? "AI is thinking..." : "Ask a question or use the mic..."}
           disabled={isDisabled}
           className="chat-textarea"
           rows={1}
         />
+        {isSpeechSupported && (
+          <button
+            type="button"
+            onClick={handleToggleListening}
+            disabled={isDisabled}
+            className={`p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 ${isListening ? 'text-red-500 animate-pulse' : ''}`}
+            aria-label={isListening ? 'Stop recording' : 'Start recording'}
+          >
+            <Mic size={20} />
+          </button>
+        )}
         <button
           type="submit"
           disabled={!message.trim() || isDisabled}
           className="send-button"
           aria-label="Send message"
         >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="22" y1="2" x2="11" y2="13"></line>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-          </svg>
+          <Send size={20} />
         </button>
       </div>
       <div className="input-hint">
