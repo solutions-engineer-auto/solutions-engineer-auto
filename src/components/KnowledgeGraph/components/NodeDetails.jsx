@@ -1,5 +1,15 @@
 import React from 'react';
 
+// Helper to format filenames for display
+const formatDisplayName = (name) => {
+  return name
+    .replace(/^TEMPLATE_/, '')
+    .replace(/_/g, ' ')
+    .replace(/\.(md|txt|pdf|docx?)$/i, '')
+    .split('/')
+    .pop(); // Get just the filename if it's a path
+};
+
 export const NodeDetails = ({ node, onClose, relatedNodes = [] }) => {
   if (!node) return null;
 
@@ -8,6 +18,8 @@ export const NodeDetails = ({ node, onClose, relatedNodes = [] }) => {
       onClose();
     }
   };
+
+  const displayName = formatDisplayName(node.name);
 
   return (
     <div 
@@ -19,7 +31,7 @@ export const NodeDetails = ({ node, onClose, relatedNodes = [] }) => {
       <div className="node-details-header">
         <h3 className="node-title">
           <span className="node-icon">{node.visual?.icon || '📄'}</span>
-          {node.name}
+          <span style={{ fontSize: '16px', fontWeight: '500' }}>{displayName}</span>
         </h3>
         <button
           className="close-button"
@@ -34,7 +46,9 @@ export const NodeDetails = ({ node, onClose, relatedNodes = [] }) => {
         <div className="node-metadata">
           <div className="metadata-item">
             <span className="metadata-label">Type:</span>
-            <span className="metadata-value">{node.type || 'Document'}</span>
+            <span className="metadata-value" style={{ textTransform: 'capitalize' }}>
+              {node.type || 'document'}
+            </span>
           </div>
           {node.metadata?.uploadDate && (
             <div className="metadata-item">
@@ -62,7 +76,7 @@ export const NodeDetails = ({ node, onClose, relatedNodes = [] }) => {
 
         {node.metadata?.tags && node.metadata.tags.length > 0 && (
           <div className="node-tags">
-            <h4>Tags</h4>
+            <h4 style={{ fontSize: '13px', fontWeight: '600', marginBottom: '8px' }}>Tags</h4>
             <div className="tags-list">
               {node.metadata.tags.map((tag, index) => (
                 <span key={index} className="node-tag">
@@ -75,22 +89,26 @@ export const NodeDetails = ({ node, onClose, relatedNodes = [] }) => {
 
         {node.metadata?.summary && (
           <div className="node-summary">
-            <h4>Summary</h4>
-            <p>{node.metadata.summary}</p>
+            <h4 style={{ fontSize: '13px', fontWeight: '600', marginBottom: '8px' }}>Summary</h4>
+            <p style={{ fontSize: '13px', lineHeight: '1.5' }}>{node.metadata.summary}</p>
           </div>
         )}
 
         {relatedNodes.length > 0 && (
           <div className="related-nodes">
-            <h4>Related Documents ({relatedNodes.length})</h4>
+            <h4 style={{ fontSize: '13px', fontWeight: '600', marginBottom: '8px' }}>
+              Related Documents ({relatedNodes.length})
+            </h4>
             <div className="related-nodes-list">
               {relatedNodes.slice(0, 5).map((relatedNode) => (
                 <div key={relatedNode.id} className="related-node">
-                  <span className="related-node-icon">
+                  <span className="related-node-icon" style={{ fontSize: '16px' }}>
                     {relatedNode.visual?.icon || '📄'}
                   </span>
                   <div className="related-node-info">
-                    <span className="related-node-name">{relatedNode.name}</span>
+                    <span className="related-node-name" style={{ fontSize: '13px' }}>
+                      {formatDisplayName(relatedNode.name)}
+                    </span>
                   </div>
                 </div>
               ))}

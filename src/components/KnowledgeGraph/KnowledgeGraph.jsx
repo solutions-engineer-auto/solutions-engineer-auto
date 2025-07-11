@@ -12,7 +12,22 @@ import { GraphLoadingState } from './components/GraphLoadingState';
 import { GraphErrorBoundary } from './components/GraphErrorBoundary';
 import './KnowledgeGraph.css';
 
-// Memoized color utilities to prevent recreating on each render
+// Polyfill for roundRect if not available
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, width, height, radius) {
+    if (width < 2 * radius) radius = width / 2;
+    if (height < 2 * radius) radius = height / 2;
+    this.beginPath();
+    this.moveTo(x + radius, y);
+    this.arcTo(x + width, y, x + width, y + height, radius);
+    this.arcTo(x + width, y + height, x, y + height, radius);
+    this.arcTo(x, y + height, x, y, radius);
+    this.arcTo(x, y, x + width, y, radius);
+    this.closePath();
+  };
+}
+
+// Utility to darken a color
 const colorCache = new Map();
 
 function darkenColor(color, percent) {
@@ -243,35 +258,63 @@ export const KnowledgeGraph = ({
       ctx.lineWidth = 2;
       ctx.stroke();
       
-      // Draw icon
-      ctx.font = `${nodeSize * 1.2}px Arial`;
+      // Draw icon with better scaling
+      const iconSize = Math.max(nodeSize * 1.0, 12); // Minimum 12px for readability
+      ctx.font = `${iconSize}px Arial`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = 'white';
       ctx.fillText(node.visual?.icon || '📄', node.x, node.y);
       
       // Draw label if zoomed in or hovered
-      if (globalScale > 2 || isHovered) {
-        const labelOpacity = isHovered ? 1 : Math.min((globalScale - 2) / 2, 1);
+      if (globalScale > 1.5 || isHovered) {
+        const labelOpacity = isHovered ? 0.9 : Math.min((globalScale - 1.5) / 2, 0.8);
         ctx.globalAlpha = labelOpacity;
         
-        // Label background
-        ctx.font = '12px Arial';
-        const textMetrics = ctx.measureText(node.name);
-        const labelPadding = 4;
-        const labelY = node.y + nodeSize + 15;
+        // Smaller, cleaner font
+        ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
         
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(
-          node.x - textMetrics.width / 2 - labelPadding,
-          labelY - 10,
-          textMetrics.width + labelPadding * 2,
-          16
-        );
+        // Clean up filename for display
+        const displayName = node.name
+          .replace(/^TEMPLATE_/, '')
+          .replace(/_/g, ' ')
+          .replace(/\.md$/, '')
+          .replace(/\.txt$/, '');
         
-        // Label text
-        ctx.fillStyle = 'white';
-        ctx.fillText(node.name, node.x, labelY);
+        // Measure text for subtle background
+        const textMetrics = ctx.measureText(displayName);
+        const labelY = node.y + nodeSize + 8;
+        
+        // Only show subtle background on hover
+        if (isHovered) {
+          const padding = 6;
+          ctx.fillStyle = 'rgba(10, 15, 30, 0.85)';
+          ctx.roundRect(
+            node.x - textMetrics.width / 2 - padding,
+            labelY - 2,
+            textMetrics.width + padding * 2,
+            14,
+            4
+          );
+          ctx.fill();
+        }
+        
+        // Draw text with subtle shadow for readability
+        if (!isHovered) {
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+          ctx.shadowBlur = 3;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 1;
+        }
+        
+        ctx.fillStyle = isHovered ? '#e2e8f0' : '#cbd5e1';
+        ctx.fillText(displayName, node.x, labelY);
+        
+        // Reset shadow
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
       }
       
       // Restore context

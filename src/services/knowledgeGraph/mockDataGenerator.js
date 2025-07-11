@@ -37,7 +37,7 @@ export class MockKnowledgeGraphGenerator {
       visual: {
         icon: this.getIconByType(doc.file_type),
         color: this.getColorByType(doc.file_type),
-        size: 5 + this.seededRandom() * 10
+        size: 12 + this.seededRandom() * 8  // Increased from 5-15 to 12-20 for better visibility
       }
     }));
   }
