@@ -4,7 +4,6 @@ import AccountCard from '../components/AccountCard';
 import AccountCreationModal from '../components/AccountCreationModal';
 import { supabase } from '../supabaseClient';
 import { KnowledgeGraph } from '../components/KnowledgeGraph';
-import { knowledgeStorage } from '../utils/knowledgeStorage';
 
 function AccountDashboard() {
   const navigate = useNavigate();
@@ -84,43 +83,73 @@ function AccountDashboard() {
     try {
       setLoadingGlobal(true);
       
-      // Get all global document IDs from frontend storage
-      const globalIds = knowledgeStorage.getGlobalDocuments();
-      
-      if (globalIds.length === 0) {
-        setGlobalDocuments([]);
-        return;
-      }
-      
-      // Fetch the actual documents from account_data_sources
-      const { data, error } = await supabase
+      // Fetch from account_data_sources where is_global = true
+      const { data: globalFromAccounts, error: error1 } = await supabase
         .from('account_data_sources')
         .select('*')
-        .in('id', globalIds)
+        .eq('is_global', true)
         .order('created_at', { ascending: false });
-        
-      if (error) throw error;
+
+      if (error1) throw error1;
+
+      // Also fetch from global_knowledge_base table if it exists
+      const { data: globalKnowledge, error: error2 } = await supabase
+        .from('global_knowledge_base')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      // If error2 is because table doesn't exist, that's fine
+      const hasGlobalTable = !error2 || error2.code !== '42P01';
       
-      setGlobalDocuments(data || []);
+      // Combine results
+      const allGlobal = [
+        ...(globalFromAccounts || []),
+        ...(hasGlobalTable && globalKnowledge ? globalKnowledge : [])
+      ];
+      
+      setGlobalDocuments(allGlobal);
     } catch (error) {
-      console.error('Failed to fetch global documents:', error);
-      setGlobalDocuments([]);
+      console.error('Error fetching global documents:', error);
     } finally {
       setLoadingGlobal(false);
     }
   };
 
-  // Load global documents on mount
+  // Fetch global knowledge on mount
   useEffect(() => {
     fetchGlobalDocuments();
     
-    // Listen for global knowledge updates
+    // Subscribe to real-time updates
+    const channel = supabase
+      .channel('global-knowledge-updates')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'account_data_sources',
+        filter: 'is_global=eq.true'
+      }, () => {
+        fetchGlobalDocuments();
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'global_knowledge_base'
+      }, () => {
+        fetchGlobalDocuments();
+      })
+      .subscribe();
+    
+    // Also listen for manual updates from other components
     const handleGlobalUpdate = () => {
       fetchGlobalDocuments();
     };
     
     window.addEventListener('globalKnowledgeUpdated', handleGlobalUpdate);
-    return () => window.removeEventListener('globalKnowledgeUpdated', handleGlobalUpdate);
+    
+    return () => {
+      channel.unsubscribe();
+      window.removeEventListener('globalKnowledgeUpdated', handleGlobalUpdate);
+    };
   }, []);
 
   const handleLogout = async () => {

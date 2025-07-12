@@ -121,8 +121,8 @@ function FileUploadDropzone({ onFileSelect, maxFiles = 1 }) {
               {isDragActive 
                 ? isDragReject 
                   ? 'Invalid file type!' 
-                  : 'Drop your file here...'
-                : 'Drag & drop your document here'
+                  : `Drop your file${maxFiles > 1 ? 's' : ''} here...`
+                : `Drag & drop your document${maxFiles > 1 ? 's' : ''} here`
               }
             </p>
             
@@ -131,7 +131,8 @@ function FileUploadDropzone({ onFileSelect, maxFiles = 1 }) {
             </p>
             
             <p className="text-xs text-white/40">
-              Supported: PDF, DOCX, DOC, TXT, MD, RTF (max {MAX_FILE_SIZE / 1024 / 1024}MB)
+              Supported: PDF, DOCX, DOC, TXT, MD, RTF (max {MAX_FILE_SIZE / 1024 / 1024}MB{maxFiles > 1 ? ` per file` : ''})
+              {maxFiles > 1 && <span className="block mt-1">You can upload multiple files at once</span>}
             </p>
           </div>
         ) : (
@@ -166,7 +167,11 @@ function FileUploadDropzone({ onFileSelect, maxFiles = 1 }) {
             
             <div className="text-center pt-2">
               <p className="text-sm text-white/40">
-                Drop another file to replace
+                {maxFiles > 1 && files.length < maxFiles 
+                  ? `Drop more files here (${files.length}/${maxFiles === Infinity ? '∞' : maxFiles})` 
+                  : maxFiles === 1 
+                  ? 'Drop another file to replace'
+                  : 'Maximum files reached'}
               </p>
             </div>
           </div>

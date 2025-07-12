@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { MockKnowledgeGraphGenerator } from '../../services/knowledgeGraph/mockDataGenerator';
-import { knowledgeStorage } from '../../utils/knowledgeStorage';
 import { useGraphControls } from './hooks/useGraphControls';
 import { useGraphRealtime } from './hooks/useGraphRealtime';
 import { useGraphPerformance } from './hooks/useGraphPerformance';
@@ -98,12 +97,11 @@ export const KnowledgeGraph = ({
       try {
         updateState({ loading: true, error: null });
         
-        // Filter documents based on view mode using frontend storage
+        // Filter documents based on view mode
         const filteredDocs = documents.filter(doc => {
-          const isGlobal = knowledgeStorage.isGlobal(doc.id);
-          if (viewMode === 'global') return isGlobal;
-          if (viewMode === 'account') return !isGlobal;
-          return true; // 'both'
+          if (viewMode === 'global') return doc.is_global === true;
+          if (viewMode === 'account') return !doc.is_global;
+          return true; // 'both' view shows all documents
         });
         
         // Generate graph data

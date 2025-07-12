@@ -18,6 +18,7 @@ function ProspectDetailPage() {
   const [dataSources, setDataSources] = useState([])
   const [processingFile, setProcessingFile] = useState(false)
   const [processingProgress, setProcessingProgress] = useState({ percent: 0, message: '' })
+  const [multipleFilesProgress, setMultipleFilesProgress] = useState([])
   const [showTemplateModal, setShowTemplateModal] = useState(false)
   const [showDocumentModal, setShowDocumentModal] = useState(false)
   const [isEditingAccount, setIsEditingAccount] = useState(false)
@@ -121,48 +122,92 @@ function ProspectDetailPage() {
   const handleFileSelect = async (files) => {
     if (files.length === 0) return
     
-    const file = files[0] // Process first file
-    
     setProcessingFile(true)
-    setProcessingProgress({ percent: 0, message: `Processing ${file.name}...` })
+    setMultipleFilesProgress([])
     
-    try {
-      const result = await documentProcessor.processFile(file, (percent, message) => {
-        setProcessingProgress({ percent, message })
-      })
+    const filesArray = Array.from(files)
+    const totalFiles = filesArray.length
+    let successCount = 0
+    let failedFiles = []
+    
+    // Initialize progress for all files
+    const initialProgress = filesArray.map((file, index) => ({
+      id: index,
+      name: file.name,
+      percent: 0,
+      message: 'Waiting...',
+      status: 'pending'
+    }))
+    setMultipleFilesProgress(initialProgress)
+    
+    // Process files sequentially to avoid overwhelming the server
+    for (let i = 0; i < filesArray.length; i++) {
+      const file = filesArray[i]
       
-      if (result.success) {
-        setProcessingProgress({ percent: 100, message: 'Saving to database...' })
-
-        const { error } = await supabase
-          .from('account_data_sources')
-          .insert({
-            account_id: id,
-            file_name: file.name,
-            file_type: file.type,
-            content: result.html,
-            metadata: result.metadata,
-          })
-
-        if (error) throw error
+      try {
+        // Update progress for current file
+        setMultipleFilesProgress(prev => prev.map((p, idx) => 
+          idx === i ? { ...p, message: `Processing ${file.name}...`, status: 'processing' } : p
+        ))
         
-        await fetchAccountDataSources()
+        const result = await documentProcessor.processFile(file, (percent, message) => {
+          setMultipleFilesProgress(prev => prev.map((p, idx) => 
+            idx === i ? { ...p, percent, message } : p
+          ))
+        })
+        
+        if (result.success) {
+          // Update progress - saving
+          setMultipleFilesProgress(prev => prev.map((p, idx) => 
+            idx === i ? { ...p, percent: 100, message: 'Saving to database...' } : p
+          ))
 
-        setProcessingProgress({ percent: 100, message: 'Processing complete!' })
-        setTimeout(() => {
-          setProcessingFile(false)
-          setProcessingProgress({ percent: 0, message: '' })
-        }, 2000)
-      } else {
-        alert(`Failed to process file: ${result.error}`)
-        setProcessingFile(false)
+          const { error } = await supabase
+            .from('account_data_sources')
+            .insert({
+              account_id: id,
+              file_name: file.name,
+              file_type: file.type,
+              content: result.html,
+              metadata: result.metadata,
+            })
+
+          if (error) throw error
+          
+          successCount++
+          
+          // Update progress - complete
+          setMultipleFilesProgress(prev => prev.map((p, idx) => 
+            idx === i ? { ...p, percent: 100, message: 'Complete!', status: 'success' } : p
+          ))
+        } else {
+          failedFiles.push({ name: file.name, error: result.error })
+          setMultipleFilesProgress(prev => prev.map((p, idx) => 
+            idx === i ? { ...p, percent: 100, message: `Failed: ${result.error}`, status: 'error' } : p
+          ))
+        }
+      } catch (error) {
+        console.error('File processing or saving error:', error)
+        failedFiles.push({ name: file.name, error: error.message })
+        setMultipleFilesProgress(prev => prev.map((p, idx) => 
+          idx === i ? { ...p, percent: 100, message: `Error: ${error.message}`, status: 'error' } : p
+        ))
       }
-    } catch (error) {
-      console.error('File processing or saving error:', error)
-      alert(`An error occurred: ${error.message}`)
+    }
+    
+    // Refresh data sources list
+    await fetchAccountDataSources()
+    
+    // Show summary
+    const summaryMessage = `Processed ${totalFiles} file${totalFiles > 1 ? 's' : ''}: ${successCount} successful${failedFiles.length > 0 ? `, ${failedFiles.length} failed` : ''}`
+    setProcessingProgress({ percent: 100, message: summaryMessage })
+    
+    // Clear progress after delay
+    setTimeout(() => {
       setProcessingFile(false)
       setProcessingProgress({ percent: 0, message: '' })
-    }
+      setMultipleFilesProgress([])
+    }, 3000)
   }
 
   const handleLoadIntoEditor = (document) => {
@@ -361,6 +406,47 @@ function ProspectDetailPage() {
     }
   }
 
+  const toggleGlobalStatus = async (docId, currentIsGlobal) => {
+    try {
+      const newIsGlobal = !currentIsGlobal
+      
+      const { error } = await supabase
+        .from('account_data_sources')
+        .update({ is_global: newIsGlobal })
+        .eq('id', docId)
+
+      if (error) throw error
+
+      await fetchAccountDataSources()
+      
+      // Notify global knowledge base to update
+      window.dispatchEvent(new Event('globalKnowledgeUpdated'))
+      
+      // Show success message
+      const successMessage = document.createElement('div')
+      successMessage.className = 'fixed top-4 right-4 glass-panel p-4 bg-emerald-500/20 border-emerald-500/30 z-50'
+      successMessage.innerHTML = `
+        <div class="flex items-center space-x-2">
+          <svg class="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          <span class="text-white">Document ${newIsGlobal ? 'added to' : 'removed from'} company knowledge base</span>
+        </div>
+      `
+      document.body.appendChild(successMessage)
+      
+      setTimeout(() => {
+        if (successMessage && successMessage.parentNode) {
+          successMessage.remove()
+        }
+      }, 3000)
+      
+    } catch (error) {
+      console.error('Failed to toggle global status:', error)
+      alert(`Failed to update document: ${error.message}`)
+    }
+  }
+
   // Load previously uploaded documents from sessionStorage
   // This is now handled by fetchAccountDataSources
   // useEffect(() => {
@@ -395,7 +481,7 @@ function ProspectDetailPage() {
       successMessage.innerHTML = `
         <div class="flex items-center space-x-2">
           <svg class="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            <path strokeLinecap="round" strokeLinejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
           </svg>
           <span class="text-white">Account details updated successfully</span>
         </div>
@@ -1000,22 +1086,64 @@ function ProspectDetailPage() {
               <>
                 <FileUploadDropzone 
                   onFileSelect={handleFileSelect}
-                  maxFiles={1}
+                  maxFiles={10}
                 />
                 
                 {/* Processing Progress */}
                 {processingFile && !processingProgress.message.includes('for editing') && (
-                  <div className="mt-6 glass-panel p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-white/70">{processingProgress.message}</span>
-                      <span className="text-sm text-cyan-400">{Math.round(processingProgress.percent)}%</span>
-                    </div>
-                    <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
-                      <div 
-                        className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400 transition-all duration-300"
-                        style={{ width: `${processingProgress.percent}%` }}
-                      />
-                    </div>
+                  <div className="mt-6">
+                    {/* Show individual file progress when processing multiple files */}
+                    {multipleFilesProgress.length > 0 && (
+                      <div className="space-y-3 mb-4">
+                        {multipleFilesProgress.map((fileProgress) => (
+                          <div key={fileProgress.id} className="glass-panel p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm text-white/70 truncate flex-1 mr-3">
+                                {fileProgress.name}
+                              </span>
+                              <span className={`text-sm ${
+                                fileProgress.status === 'success' ? 'text-emerald-400' :
+                                fileProgress.status === 'error' ? 'text-red-400' :
+                                fileProgress.status === 'processing' ? 'text-cyan-400' :
+                                'text-white/50'
+                              }`}>
+                                {fileProgress.status === 'success' ? '✓' :
+                                 fileProgress.status === 'error' ? '✗' :
+                                 fileProgress.status === 'processing' ? `${Math.round(fileProgress.percent)}%` :
+                                 '...'}
+                              </span>
+                            </div>
+                            <div className="text-xs text-white/50 mb-1">{fileProgress.message}</div>
+                            <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
+                              <div 
+                                className={`h-full transition-all duration-300 ${
+                                  fileProgress.status === 'success' ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' :
+                                  fileProgress.status === 'error' ? 'bg-gradient-to-r from-red-500 to-red-400' :
+                                  'bg-gradient-to-r from-cyan-500 to-cyan-400'
+                                }`}
+                                style={{ width: `${fileProgress.percent}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Summary message when all files are processed */}
+                    {processingProgress.message && multipleFilesProgress.length === 0 && (
+                      <div className="glass-panel p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm text-white/70">{processingProgress.message}</span>
+                          <span className="text-sm text-cyan-400">{Math.round(processingProgress.percent)}%</span>
+                        </div>
+                        <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400 transition-all duration-300"
+                            style={{ width: `${processingProgress.percent}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
                 
@@ -1031,9 +1159,32 @@ function ProspectDetailPage() {
                               <p className="text-white font-medium">{doc.file_name}</p>
                               <p className="text-sm text-white/50">
                                 {new Date(doc.created_at).toLocaleDateString()} • {doc.file_type}
+                                {doc.is_global && (
+                                  <span className="ml-2 px-2 py-0.5 text-xs bg-cyan-500/20 text-cyan-400 rounded-full border border-cyan-500/30">
+                                    Company-wide
+                                  </span>
+                                )}
                               </p>
                             </div>
                             <div className="flex items-center space-x-2 ml-4">
+                              <button
+                                onClick={() => toggleGlobalStatus(doc.id, doc.is_global)}
+                                className={`btn-volcanic text-sm px-4 py-2 flex items-center space-x-2 ${
+                                  doc.is_global 
+                                    ? 'border-cyan-500/30 text-cyan-400 hover:border-cyan-500/50' 
+                                    : 'hover:border-cyan-500/30 hover:text-cyan-400'
+                                }`}
+                                title={doc.is_global ? "Remove from company knowledge base" : "Add to company knowledge base"}
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                                        d={doc.is_global 
+                                          ? "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" // House icon for global
+                                          : "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" // Users icon for sharing
+                                        } />
+                                </svg>
+                                <span>{doc.is_global ? 'Company-wide' : 'Share Company-wide'}</span>
+                              </button>
                               <button
                                 onClick={() => handleLoadIntoEditor(doc)}
                                 className="btn-volcanic text-sm px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
