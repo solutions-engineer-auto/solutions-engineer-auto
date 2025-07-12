@@ -13,4 +13,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Supabase URL and anonymous key are required.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey); 
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Expose to window for testing/debugging (only in development)
+if (import.meta.env.DEV) {
+  window.supabase = supabase;
+} 

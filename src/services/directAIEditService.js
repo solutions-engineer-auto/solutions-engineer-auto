@@ -9,6 +9,133 @@ const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY ||
                        import.meta.env.OPENAI_API_KEY;
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
+// Token estimation constants
+const AVG_CHARS_PER_TOKEN = 4;
+const MIN_RESPONSE_TOKENS = 500;
+const MAX_INPUT_TOKENS = 30000; // ~120K characters
+const MODEL_CONTEXT_WINDOW = 128000; // gpt-4o-mini context window
+const MODEL_MAX_OUTPUT = 16000; // gpt-4o-mini max output tokens
+const SYSTEM_PROMPT_TOKENS = 250; // Approximate system prompt size
+
+/**
+ * Estimate the number of tokens in a text string
+ * @param {string} text - Text to estimate
+ * @returns {number} Estimated token count
+ */
+function estimateTokens(text) {
+  // OpenAI's rule of thumb: ~4 characters per token for English
+  return Math.ceil(text.length / AVG_CHARS_PER_TOKEN);
+}
+
+/**
+ * Calculate appropriate max_tokens based on input size
+ * @param {string} text - Input text
+ * @param {string} instruction - User instruction
+ * @returns {number} Calculated max_tokens value
+ */
+function calculateMaxTokens(text, instruction) {
+  const inputTokens = estimateTokens(text + instruction);
+  const totalInputTokens = inputTokens + SYSTEM_PROMPT_TOKENS;
+  
+  // For gpt-4o-mini, context window is 128K tokens, output limit is 16K
+  // We need to ensure: input_tokens + max_tokens <= 128K
+  // And max_tokens <= 16K
+  
+  // Leave room for the model to think and respond
+  const availableForOutput = Math.min(
+    MODEL_CONTEXT_WINDOW - totalInputTokens - 1000, // Leave 1K buffer
+    MODEL_MAX_OUTPUT // Model's max output
+  );
+  
+  // Calculate based on input size but with reasonable limits
+  let responseTokens = Math.max(
+    MIN_RESPONSE_TOKENS,
+    Math.min(inputTokens * 2, availableForOutput)
+  );
+  
+  // For very large inputs, be more conservative
+  if (totalInputTokens > 10000) {
+    responseTokens = Math.min(responseTokens, 8000);
+  } else if (totalInputTokens > 5000) {
+    responseTokens = Math.min(responseTokens, 4000);
+  }
+  
+  console.log('[DirectAIEditService] Token calculation:', {
+    textLength: text.length,
+    estimatedInputTokens: inputTokens,
+    systemPromptTokens: SYSTEM_PROMPT_TOKENS,
+    totalInputTokens,
+    availableForOutput,
+    calculatedMaxTokens: responseTokens
+  });
+  
+  return responseTokens;
+}
+
+/**
+ * Attempt to repair truncated JSON
+ * @param {string} jsonStr - Potentially malformed JSON string
+ * @returns {Object|null} Parsed object or null if unrecoverable
+ */
+function attemptJSONRepair(jsonStr) {
+  // First try parsing as-is
+  try {
+    return JSON.parse(jsonStr);
+  } catch {
+    // Continue with repair attempts
+  }
+  
+  // Common issues with truncated JSON:
+  // 1. Missing closing braces/brackets
+  // 2. Incomplete string values
+  // 3. Truncated in the middle of a value
+  
+  let repaired = jsonStr.trim();
+  
+  // Count opening and closing braces/brackets
+  const openBraces = (repaired.match(/{/g) || []).length;
+  const closeBraces = (repaired.match(/}/g) || []).length;
+  const openBrackets = (repaired.match(/\[/g) || []).length;
+  const closeBrackets = (repaired.match(/]/g) || []).length;
+  
+  // Try to fix unclosed strings (look for last quote)
+  const lastQuoteIndex = repaired.lastIndexOf('"');
+  
+  // Check if we might be in an unclosed string
+  if (lastQuoteIndex > -1) {
+    const afterLastQuote = repaired.substring(lastQuoteIndex + 1);
+    if (!afterLastQuote.includes('"')) {
+      // Likely truncated in a string value
+      repaired += '"';
+    }
+  }
+  
+  // Add missing brackets
+  repaired += ']'.repeat(openBrackets - closeBrackets);
+  repaired += '}'.repeat(openBraces - closeBraces);
+  
+  // Try parsing the repaired JSON
+  try {
+    const parsed = JSON.parse(repaired);
+    console.warn('[DirectAIEditService] Successfully repaired truncated JSON');
+    return parsed;
+  } catch {
+    // If it still fails, try extracting just the edits array
+    const editsMatch = repaired.match(/"edits"\s*:\s*\[([\s\S]*?)\]/);
+    if (editsMatch) {
+      try {
+        const editsArray = JSON.parse(`[${editsMatch[1]}]`);
+        console.warn('[DirectAIEditService] Extracted edits array from malformed JSON');
+        return { edits: editsArray };
+      } catch {
+        // Give up
+      }
+    }
+  }
+  
+  return null;
+}
+
 /**
  * Request edit suggestions directly from OpenAI
  * @param {Object} params
@@ -19,6 +146,12 @@ const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 export async function getDirectAISuggestions({ text, instruction }) {
   if (!OPENAI_API_KEY) {
     throw new Error('OpenAI API key not configured');
+  }
+
+  // Check text size limits upfront
+  const textTokens = estimateTokens(text);
+  if (textTokens > MAX_INPUT_TOKENS) {
+    throw new Error(`Text too large (${textTokens} tokens). Maximum allowed is ${MAX_INPUT_TOKENS} tokens. Please select a smaller portion of text.`);
   }
 
   const systemPrompt = `You are an AI text editor. The user will provide text and an instruction for how to modify it.
@@ -54,6 +187,10 @@ Instruction: ${instruction}
 Provide edit suggestions in the JSON format specified.`;
 
   try {
+    // Create an AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
     const response = await fetch(OPENAI_API_URL, {
       method: 'POST',
       headers: {
@@ -67,13 +204,22 @@ Provide edit suggestions in the JSON format specified.`;
           { role: 'user', content: userPrompt }
         ],
         temperature: 0.3, // Lower temperature for more consistent edits
-        max_tokens: 500,
+        max_tokens: calculateMaxTokens(text, instruction),
         response_format: { type: "json_object" }
-      })
+      }),
+      signal: controller.signal // Add abort signal
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const error = await response.text();
+      
+      // Check for specific error types
+      if (error.includes('context_length_exceeded') || error.includes('maximum context length')) {
+        throw new Error('Text is too long. Please select a smaller portion to edit.');
+      }
+      
       throw new Error(`OpenAI API error: ${response.status} - ${error}`);
     }
 
@@ -85,7 +231,7 @@ Provide edit suggestions in the JSON format specified.`;
     }
 
     // Parse the JSON response
-    const suggestions = JSON.parse(content);
+    const suggestions = attemptJSONRepair(content) || JSON.parse(content);
     
     // Validate the response structure
     if (!suggestions.edits || !Array.isArray(suggestions.edits)) {
@@ -108,6 +254,19 @@ Provide edit suggestions in the JSON format specified.`;
   } catch (error) {
     console.error('[DirectAIEditService] Error:', error);
     
+    // Handle specific error types
+    if (error.name === 'AbortError') {
+      throw new Error('Request timed out. The text might be too large or the service is slow. Try selecting less text.');
+    }
+    
+    if (error.message.includes('Text too large')) {
+      throw error; // Re-throw our own size limit error
+    }
+    
+    if (error.message.includes('Request timed out')) {
+      throw new Error('OpenAI request timed out. This often happens with very large text selections. Try selecting less text.');
+    }
+    
     // If parsing failed, return a simple modification
     if (error.message.includes('JSON')) {
       return {
@@ -117,7 +276,7 @@ Provide edit suggestions in the JSON format specified.`;
           target: text,
           replacement: text, // No change as fallback
           confidence: 0.5,
-          reason: 'Failed to parse AI response',
+          reason: 'Failed to parse AI response - the text might be too large',
           occurrences: [1]
         }]
       };

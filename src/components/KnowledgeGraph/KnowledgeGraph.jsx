@@ -1,6 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { MockKnowledgeGraphGenerator } from '../../services/knowledgeGraph/mockDataGenerator';
+import { hybridGraphGenerator } from '../../services/knowledgeGraph/hybridGraphGenerator';
+import { vectorRAGService } from '../../services/knowledgeGraph/vectorRAGService';
+import { VectorDatabaseTester } from '../VectorDatabaseTester';
+import * as d3 from 'd3-force';
 import { useGraphControls } from './hooks/useGraphControls';
 import { useGraphRealtime } from './hooks/useGraphRealtime';
 import { useGraphPerformance } from './hooks/useGraphPerformance';
@@ -26,560 +30,493 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
   };
 }
 
-// Utility to darken a color
-const colorCache = new Map();
-
-function darkenColor(color, percent) {
-  const key = `${color}-dark-${percent}`;
-  if (colorCache.has(key)) return colorCache.get(key);
-  
-  const num = parseInt(color.replace('#', ''), 16);
-  const amt = Math.round(2.55 * percent);
-  const R = (num >> 16) - amt;
-  const G = (num >> 8 & 0x00FF) - amt;
-  const B = (num & 0x0000FF) - amt;
-  const result = '#' + (0x1000000 + (R > 0 ? R : 0) * 0x10000 +
-    (G > 0 ? G : 0) * 0x100 +
-    (B > 0 ? B : 0)).toString(16).slice(1);
-  
-  colorCache.set(key, result);
-  return result;
-}
-
-export const KnowledgeGraph = ({
-  accountId,
-  documents = [],
-  viewMode = 'account',
+export function KnowledgeGraph({ 
+  documents = [], 
+  viewMode = 'both',
+  accountId = null,
+  showPerformanceMetrics = false,
+  enableRealtime = false,
   height = 600,
-  showControls = true,
-  showUpload = true,
-  onNodeClick,
-  onFileDrop,
-  className = ''
-}) => {
-  // Consolidated state using reducer pattern for better performance
-  const [state, setState] = useState({
-    graphData: { nodes: [], links: [] },
-    loading: true,
-    error: null,
-    hoveredNode: null,
-    selectedNode: null,
-    draggedFile: null,
-    previewConnections: [],
-    searchQuery: '',
-    filterTags: [],
-    highlightedNodes: new Set(),
-    animatingNodes: new Set()
-  });
-
-  // Update specific state properties
-  const updateState = useCallback((updates) => {
-    setState(prev => ({ ...prev, ...updates }));
-  }, []);
+  isDragging = false,
+  onFileSelect = null
+}) {
+  const [selectedNode, setSelectedNode] = useState(null);
+  const [highlightedNodes, setHighlightedNodes] = useState(new Set());
+  const [highlightedLinks, setHighlightedLinks] = useState(new Set());
+  const [graphData, setGraphData] = useState({ nodes: [], links: [] });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [physicsEnabled, setPhysicsEnabled] = useState(true);
+  const [filterTags, setFilterTags] = useState([]);
+  const [ragData, setRagData] = useState(null);
+  const [showVectorTester, setShowVectorTester] = useState(false);
+  const [similarityThreshold, setSimilarityThreshold] = useState(0.5); // Dynamic threshold
   
-  // Refs
   const graphRef = useRef();
-  const containerRef = useRef(null);
-  const dragCounter = useRef(0);
-  const hoverTimeoutRef = useRef(null);
-  const cleanupRef = useRef([]);
+  const containerRef = useRef();
   
-  // Custom Hooks
-  const controls = useGraphControls(graphRef);
-  const accessedNodes = useGraphRealtime(accountId);
-  const performanceMetrics = useGraphPerformance(state.graphData);
+  // Custom hooks
+  const { 
+    zoomToFit, 
+    centerGraph, 
+    resetGraph, 
+    takeScreenshot 
+  } = useGraphControls(graphRef);
   
-  // Initialize graph data
-  useEffect(() => {
-    let cancelled = false;
+  // Initialize realtime connection if enabled
+  useGraphRealtime(enableRealtime, graphData);
+  
+  const { 
+    performanceMetrics 
+  } = useGraphPerformance(graphRef, showPerformanceMetrics);
+
+  // Filter documents based on view mode
+  const filteredDocuments = useMemo(() => {
+    // Filter documents based on view mode
+    const filteredDocs = documents.filter(doc => {
+      if (viewMode === 'global') return doc.is_global === true;
+      if (viewMode === 'account') return !doc.is_global;
+      return true; // 'both'
+    });
     
-    const initializeGraph = async () => {
+    // Apply search filter
+    if (searchTerm.trim()) {
+      return filteredDocs.filter(doc => 
+        doc.file_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        doc.content?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    return filteredDocs;
+  }, [documents, viewMode, searchTerm]);
+
+  // Generate graph data
+  const generateGraphData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      if (filteredDocuments.length === 0) {
+        setGraphData({ nodes: [], links: [] });
+        return;
+      }
+
+      // Use hybrid graph generation
+      console.log('🧬 Generating hybrid graph...');
+      
       try {
-        updateState({ loading: true, error: null });
+        // Update the threshold before generating relationships
+        vectorRAGService.similarityThreshold = similarityThreshold;
         
-        // Filter documents based on view mode
-        const filteredDocs = documents.filter(doc => {
-          if (viewMode === 'global') return doc.is_global === true;
-          if (viewMode === 'account') return !doc.is_global;
-          return true; // 'both' view shows all documents
-        });
+        // Get RAG relationships
+        const relationships = await vectorRAGService.generateDocumentRelationships(
+          accountId === 'global' ? null : accountId
+        );
         
-        // Generate graph data
-        const generator = new MockKnowledgeGraphGenerator(filteredDocs);
-        const data = generator.generateMockGraph();
+        setRagData(relationships);
         
-        if (!cancelled) {
-          updateState({ 
-            graphData: data,
-            loading: false 
-          });
-        }
-      } catch (err) {
-        if (!cancelled) {
-          updateState({ 
-            error: err instanceof Error ? err : new Error('Failed to initialize graph'),
-            loading: false 
-          });
-        }
+        // Generate hybrid graph with both baseline and RAG connections
+        const graphData = hybridGraphGenerator.generate(filteredDocuments, relationships);
+        
+        setGraphData(graphData);
+        
+      } catch (ragError) {
+        console.error('❌ Hybrid graph generation failed:', ragError);
+        console.error('Falling back to mock data.');
+        
+        // Fall back to mock data on error
+        const mockGenerator = new MockKnowledgeGraphGenerator(filteredDocuments);
+        const mockData = mockGenerator.generateMockGraph();
+        setGraphData(mockData);
       }
-    };
-    
-    initializeGraph();
-    
-    return () => {
-      cancelled = true;
-    };
-  }, [documents, viewMode, accountId, updateState]);
-  
-  // Real-time AI document access animation
-  useEffect(() => {
-    if (accessedNodes.size > 0) {
-      updateState({ animatingNodes: new Set(accessedNodes) });
       
-      // Clear animation after duration
-      const timeout = setTimeout(() => {
-        updateState({ animatingNodes: new Set() });
-      }, 3000);
+      // Generate filter tags
+      const uniqueTypes = [...new Set(filteredDocuments.map(n => n.file_type || 'unknown'))];
+      const tags = uniqueTypes.map(type => ({
+        name: type,
+        count: filteredDocuments.filter(n => n.file_type === type).length,
+        active: false
+      }));
+      setFilterTags(tags);
       
-      cleanupRef.current.push(() => clearTimeout(timeout));
+    } catch (err) {
+      console.error('Error generating graph data:', err);
+      setError(`Failed to generate graph: ${err.message}`);
+      
+      // Fallback to mock data
+      const generator = new MockKnowledgeGraphGenerator(filteredDocuments);
+      const mockData = generator.generateMockGraph();
+      setGraphData(mockData);
+      
+    } finally {
+      setLoading(false);
     }
-  }, [accessedNodes, updateState]);
-  
-  // Cleanup function
+  }, [filteredDocuments, accountId, similarityThreshold]);
+
+  // Call generateGraphData when dependencies change
   useEffect(() => {
-    return () => {
-      cleanupRef.current.forEach(cleanup => cleanup());
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-      }
-    };
+    generateGraphData();
+  }, [generateGraphData]);
+
+  // Node event handlers
+  const handleNodeClick = useCallback((node) => {
+    setSelectedNode(node);
   }, []);
-  
-  // Smooth node highlighting on hover
+
   const handleNodeHover = useCallback((node) => {
-    // Clear any pending hover timeout
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-      hoverTimeoutRef.current = null;
-    }
+    const highlights = new Set();
+    const linkHighlights = new Set();
     
     if (node) {
-      // Delay hover effect slightly for smoother interaction
-      hoverTimeoutRef.current = setTimeout(() => {
-        const connected = new Set([node.id]);
-        state.graphData.links.forEach(link => {
-          const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
-          const targetId = typeof link.target === 'string' ? link.target : link.target.id;
-          
-          if (sourceId === node.id) connected.add(targetId);
-          if (targetId === node.id) connected.add(sourceId);
-        });
-        
-        updateState({ 
-          hoveredNode: node,
-          highlightedNodes: connected 
-        });
-      }, 50);
-    } else {
-      updateState({ 
-        hoveredNode: null,
-        highlightedNodes: new Set() 
+      highlights.add(node.id);
+      
+      // Highlight connected nodes
+      graphData.links.forEach(link => {
+        if (link.source === node.id || link.source.id === node.id) {
+          highlights.add(typeof link.target === 'object' ? link.target.id : link.target);
+          linkHighlights.add(link);
+        }
+        if (link.target === node.id || link.target.id === node.id) {
+          highlights.add(typeof link.source === 'object' ? link.source.id : link.source);
+          linkHighlights.add(link);
+        }
       });
     }
     
-    document.body.style.cursor = node ? 'pointer' : 'default';
-  }, [state.graphData.links, updateState]);
-  
-  // Handle node click with smooth animation
-  const handleNodeClick = useCallback((node) => {
-    updateState({ selectedNode: node });
-    
-    if (onNodeClick) {
-      onNodeClick(node);
-    }
-    
-    // Smooth zoom to node
+    setHighlightedNodes(highlights);
+    setHighlightedLinks(linkHighlights);
+  }, [graphData.links]);
+
+  // Control handlers
+  const handleFilterChange = useCallback((tagName) => {
+    setFilterTags(prev => 
+      prev.map(tag => 
+        tag.name === tagName 
+          ? { ...tag, active: !tag.active }
+          : tag
+      )
+    );
+  }, []);
+
+  const handleTogglePhysics = useCallback(() => {
+    setPhysicsEnabled(prev => !prev);
     if (graphRef.current) {
-      graphRef.current.centerAt(node.x, node.y, 1000);
-      graphRef.current.zoom(3, 1000);
+      if (physicsEnabled) {
+        graphRef.current.d3Force('charge', null);
+        graphRef.current.d3Force('link', null);
+      } else {
+        graphRef.current.d3ReheatSimulation();
+      }
+    }
+  }, [physicsEnabled]);
+
+  // Node rendering
+  const nodeCanvasObject = useCallback((node, ctx, globalScale) => {
+    const label = node.name || node.id;
+    const fontSize = Math.max(10, 12 / globalScale);
+    const nodeRadius = Math.max(6, 8 / globalScale);
+    
+    // Use the color from the node's visual properties (set by file type)
+    let nodeColor = node.visual?.color || '#3b82f6';
+    let borderColor = nodeColor;
+    
+    // Adjust colors based on highlight state
+    if (highlightedNodes.has(node.id)) {
+      // Keep original file type color, just change border to cyan
+      borderColor = '#06b6d4'; // Bright cyan border for highlighted
+    } else if (highlightedNodes.size > 0) {
+      // Fade non-highlighted nodes but keep some color
+      const originalColor = nodeColor;
+      nodeColor = originalColor + '80'; // Add alpha for transparency
+      borderColor = '#475569';
     }
     
-    // Analytics
-    if (window.gtag) {
-      window.gtag('event', 'knowledge_graph_node_click', {
-        node_id: node.id,
-        node_type: node.type,
-        account_id: accountId
-      });
-    }
-  }, [onNodeClick, accountId, updateState]);
-  
-  // Memoized node rendering to prevent recreation
-  const nodeCanvasObject = useMemo(() => {
-    return (node, ctx, globalScale) => {
-      const nodeSize = (node.visual?.size || 10) / 2;
-      const isHighlighted = state.highlightedNodes.has(node.id);
-      const isAnimating = state.animatingNodes.has(node.id);
-      const isHovered = state.hoveredNode?.id === node.id;
-      
-      // Save context state
-      ctx.save();
-      
-      // Apply opacity based on highlight state
-      if (state.highlightedNodes.size > 0 && !isHighlighted) {
-        ctx.globalAlpha = 0.2;
-      }
-      
-      // Draw outer glow for animated or hovered nodes
-      if (isAnimating || isHovered) {
-        const glowSize = isAnimating ? nodeSize * 2.5 : nodeSize * 1.8;
-        const gradient = ctx.createRadialGradient(node.x, node.y, nodeSize, node.x, node.y, glowSize);
-        gradient.addColorStop(0, node.visual?.color || '#6b7280');
-        gradient.addColorStop(1, 'transparent');
-        
-        ctx.fillStyle = gradient;
-        ctx.globalAlpha = isAnimating ? 0.6 : 0.3;
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, glowSize, 0, 2 * Math.PI);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-      }
-      
-      // Draw node
-      ctx.fillStyle = node.visual?.color || '#6b7280';
-      ctx.beginPath();
-      ctx.arc(node.x, node.y, nodeSize, 0, 2 * Math.PI);
-      ctx.fill();
-      
-      // Draw border
-      ctx.strokeStyle = darkenColor(node.visual?.color || '#6b7280', 20);
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      
-      // Draw icon with better scaling
-      const iconSize = Math.max(nodeSize * 1.0, 12); // Minimum 12px for readability
-      ctx.font = `${iconSize}px Arial`;
+    // Draw node with a subtle glow
+    ctx.save();
+    
+    // Glow effect for better visibility
+    ctx.shadowColor = nodeColor;
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+    
+    // Draw main node
+    ctx.beginPath();
+    ctx.arc(node.x, node.y, nodeRadius, 0, 2 * Math.PI);
+    ctx.fillStyle = nodeColor;
+    ctx.fill();
+    
+    // Draw border
+    ctx.shadowBlur = 0; // Remove shadow for border
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = highlightedNodes.has(node.id) ? 3 : 2;
+    ctx.stroke();
+    
+    // Draw icon if available
+    if (node.visual?.icon && globalScale > 0.8) {
+      ctx.font = `${Math.max(12, nodeRadius)}px Arial`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillStyle = 'white';
-      ctx.fillText(node.visual?.icon || '📄', node.x, node.y);
-      
-      // Draw label if zoomed in or hovered
-      if (globalScale > 1.5 || isHovered) {
-        const labelOpacity = isHovered ? 0.9 : Math.min((globalScale - 1.5) / 2, 0.8);
-        ctx.globalAlpha = labelOpacity;
-        
-        // Smaller, cleaner font
-        ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
-        
-        // Clean up filename for display
-        const displayName = node.name
-          .replace(/^TEMPLATE_/, '')
-          .replace(/_/g, ' ')
-          .replace(/\.md$/, '')
-          .replace(/\.txt$/, '');
-        
-        // Measure text for subtle background
-        const textMetrics = ctx.measureText(displayName);
-        const labelY = node.y + nodeSize + 8;
-        
-        // Only show subtle background on hover
-        if (isHovered) {
-          const padding = 6;
-          ctx.fillStyle = 'rgba(10, 15, 30, 0.85)';
-          ctx.roundRect(
-            node.x - textMetrics.width / 2 - padding,
-            labelY - 2,
-            textMetrics.width + padding * 2,
-            14,
-            4
-          );
-          ctx.fill();
-        }
-        
-        // Draw text with subtle shadow for readability
-        if (!isHovered) {
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-          ctx.shadowBlur = 3;
-          ctx.shadowOffsetX = 0;
-          ctx.shadowOffsetY = 1;
-        }
-        
-        ctx.fillStyle = isHovered ? '#e2e8f0' : '#cbd5e1';
-        ctx.fillText(displayName, node.x, labelY);
-        
-        // Reset shadow
-        ctx.shadowColor = 'transparent';
-        ctx.shadowBlur = 0;
-      }
-      
-      // Restore context
-      ctx.restore();
-    };
-  }, [state.hoveredNode, state.highlightedNodes, state.animatingNodes]);
-  
-  // Memoized link rendering
-  const linkCanvasObject = useMemo(() => {
-    return (link, ctx) => {
-      const start = link.source;
-      const end = link.target;
-      
-      // Skip if nodes not visible
-      if (!start.x || !end.x) return;
-      
-      const isHighlighted = state.highlightedNodes.has(start.id) && state.highlightedNodes.has(end.id);
-      
-      ctx.save();
-      
-      // Apply opacity
-      ctx.globalAlpha = state.highlightedNodes.size > 0 
-        ? (isHighlighted ? 0.8 : 0.1)
-        : (link.value * 0.6);
-      
-      // Draw line
-      ctx.strokeStyle = '#374151';
-      ctx.lineWidth = Math.max(1, link.value * 3);
-      ctx.beginPath();
-      ctx.moveTo(start.x, start.y);
-      ctx.lineTo(end.x, end.y);
-      ctx.stroke();
-      
-      ctx.restore();
-    };
-  }, [state.highlightedNodes]);
-  
-  // Filtered data for search
-  const filteredGraphData = useMemo(() => {
-    if (!state.searchQuery && state.filterTags.length === 0) {
-      return state.graphData;
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowBlur = 0;
+      ctx.fillText(node.visual.icon, node.x, node.y);
     }
     
-    const query = state.searchQuery.toLowerCase();
-    const filteredNodes = state.graphData.nodes.filter(node => {
-      const matchesSearch = !query || 
-        node.name.toLowerCase().includes(query) ||
-        node.metadata?.summary?.toLowerCase().includes(query) ||
-        node.metadata?.tags?.some(tag => tag.toLowerCase().includes(query));
+    // Draw label if zoomed in enough
+    if (globalScale > 1.2) {
+      ctx.font = `${fontSize}px Sans-Serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = '#e2e8f0';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+      ctx.shadowBlur = 3;
+      const labelY = node.y + nodeRadius + 4;
       
-      const matchesTags = state.filterTags.length === 0 ||
-        state.filterTags.every(tag => node.metadata?.tags?.includes(tag));
-      
-      return matchesSearch && matchesTags;
-    });
-    
-    const nodeIds = new Set(filteredNodes.map(n => n.id));
-    const filteredLinks = state.graphData.links.filter(link => {
-      const sourceId = typeof link.source === 'string' ? link.source : link.source.id;
-      const targetId = typeof link.target === 'string' ? link.target : link.target.id;
-      return nodeIds.has(sourceId) && nodeIds.has(targetId);
-    });
-    
-    return { nodes: filteredNodes, links: filteredLinks };
-  }, [state.graphData, state.searchQuery, state.filterTags]);
-  
-  // Drag and drop handlers
-  const handleDragEnter = useCallback((e) => {
-    e.preventDefault();
-    dragCounter.current++;
-    
-    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
-      const file = e.dataTransfer.items[0];
-      if (file.kind === 'file') {
-        const fileObj = file.getAsFile();
-        
-        // Calculate preview connections
-        const connections = state.graphData.nodes
-          .filter(n => n.type === 'document')
-          .map(node => ({
-            nodeId: node.id,
-            node: node,
-            similarity: 0.6 + Math.random() * 0.4
-          }))
-          .sort((a, b) => b.similarity - a.similarity)
-          .slice(0, 5);
-        
-        updateState({ 
-          draggedFile: fileObj,
-          previewConnections: connections 
-        });
-      }
-    }
-  }, [state.graphData.nodes, updateState]);
-  
-  const handleDragLeave = useCallback((e) => {
-    e.preventDefault();
-    dragCounter.current--;
-    
-    if (dragCounter.current === 0) {
-      updateState({ 
-        draggedFile: null,
-        previewConnections: [] 
-      });
-    }
-  }, [updateState]);
-  
-  const handleDrop = useCallback(async (e) => {
-    e.preventDefault();
-    dragCounter.current = 0;
-    
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length > 0 && onFileDrop) {
-      const file = files[0];
-      
-      try {
-        await onFileDrop(file);
-      } catch (error) {
-        console.error('File upload failed:', error);
-        if (window.showNotification) {
-          window.showNotification('error', 'Failed to upload file. Please try again.');
-        }
-      }
+      // Truncate long labels
+      const maxLength = 20;
+      const displayLabel = label.length > maxLength ? label.substring(0, maxLength) + '...' : label;
+      ctx.fillText(displayLabel, node.x, labelY);
     }
     
-    updateState({ 
-      draggedFile: null,
-      previewConnections: [] 
-    });
-  }, [onFileDrop, updateState]);
-  
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        updateState({ 
-          selectedNode: null,
-          hoveredNode: null,
-          highlightedNodes: new Set() 
-        });
-      } else if (e.key === ' ' && !e.target.matches('input, textarea')) {
-        e.preventDefault();
-        controls.resetView();
-      } else if (e.key === 'f' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        const searchInput = document.getElementById('graph-search-input');
-        if (searchInput) searchInput.focus();
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [controls, updateState]);
+    ctx.restore();
+  }, [highlightedNodes]);
 
-  // Handle global knowledge updates
+  // Configure force simulation for better spacing
   useEffect(() => {
-    const handleGlobalUpdate = () => {
-      // Force re-render when global knowledge changes
-      updateState(prev => ({ ...prev }));
-    };
+    if (graphRef.current) {
+      const graph = graphRef.current;
+      
+      // Configure forces for better node spacing
+      graph.d3Force('link')
+        .distance(link => {
+          // Variable distance based on link type
+          if (link.type === 'rag') {
+            return link.strength === 'strong' ? 50 : 
+                   link.strength === 'medium' ? 80 : 100;
+          }
+          return 150; // Baseline connections are longer
+        })
+        .strength(link => {
+          // Variable strength based on link type
+          if (link.type === 'rag') {
+            return link.strength === 'strong' ? 0.8 : 
+                   link.strength === 'medium' ? 0.5 : 0.3;
+          }
+          return 0.1; // Baseline connections are weaker
+        });
+        
+      graph.d3Force('charge')
+        .strength(-300); // Moderate repulsion between nodes
+        
+      graph.d3Force('center')
+        .strength(0.05); // Very weak centering force
+        
+      // Add collision detection to prevent overlaps
+      graph.d3Force('collide', d3.forceCollide()
+        .radius(25) // Minimum distance between nodes
+        .strength(0.7)
+      );
+    }
+  }, [graphData, physicsEnabled]);
 
-    window.addEventListener('globalKnowledgeUpdated', handleGlobalUpdate);
-    return () => window.removeEventListener('globalKnowledgeUpdated', handleGlobalUpdate);
-  }, [updateState]);
-  
-  // Loading state
-  if (state.loading) {
-    return <GraphLoadingState height={height} />;
-  }
-  
-  // Error state
-  if (state.error) {
+  // Link rendering
+  const linkCanvasObject = useCallback((link, ctx) => {
+    const start = link.source;
+    const end = link.target;
+    
+    if (typeof start !== 'object' || typeof end !== 'object') return;
+    
+    const isHighlighted = highlightedLinks.has(link);
+    const linkType = link.type || 'baseline';
+    const strength = link.strength || 'weak';
+    
+    // Visual properties based on link type and strength
+    let opacity, lineWidth, color, dashPattern;
+    
+    if (isHighlighted) {
+      opacity = 1;
+      lineWidth = 4;
+      color = '#06b6d4'; // Bright cyan for highlighted
+      dashPattern = [];
+    } else if (highlightedLinks.size > 0) {
+      opacity = 0.05; // Very faded when others are highlighted
+      lineWidth = 1;
+      color = '#64748b';
+      dashPattern = [];
+    } else {
+      // Normal state - different styles for different types
+      if (linkType === 'rag') {
+        // RAG connections - solid lines
+        dashPattern = [];
+        switch (strength) {
+          case 'strong':
+            opacity = 0.9;
+            lineWidth = 3;
+            color = '#10b981'; // Strong = green
+            break;
+          case 'medium':
+            opacity = 0.7;
+            lineWidth = 2;
+            color = '#3b82f6'; // Medium = blue
+            break;
+          case 'weak':
+            opacity = 0.5;
+            lineWidth = 1.5;
+            color = '#8b5cf6'; // Weak = purple
+            break;
+          default:
+            opacity = 0.3;
+            lineWidth = 1;
+            color = '#6b7280'; // Very weak = gray
+        }
+      } else {
+        // Baseline connections - dashed lines
+        opacity = 0.2;
+        lineWidth = 1;
+        color = '#94a3b8';
+        dashPattern = [2, 4]; // Dashed pattern
+        
+        if (strength === 'very-weak' || linkType === 'minimum') {
+          dashPattern = [1, 5]; // More sparse dashing
+          opacity = 0.1;
+        }
+      }
+    }
+    
+    ctx.save();
+    ctx.globalAlpha = opacity;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    
+    // Set dash pattern
+    ctx.setLineDash(dashPattern);
+    
+    // Add subtle glow for strong RAG relationships
+    if (linkType === 'rag' && strength === 'strong' && !highlightedLinks.size) {
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 3;
+    }
+    
+    ctx.beginPath();
+    ctx.moveTo(start.x, start.y);
+    ctx.lineTo(end.x, end.y);
+    ctx.stroke();
+    
+    // Reset dash pattern
+    ctx.setLineDash([]);
+    
+    ctx.restore();
+  }, [highlightedLinks]);
+
+  if (loading) {
     return (
-      <div className={`knowledge-graph-error ${className}`} style={{ height }}>
-        <div className="error-content">
-          <h3>Unable to Load Knowledge Graph</h3>
-          <p>{state.error.message}</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="btn-volcanic"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
+      <GraphLoadingState 
+        message="Generating knowledge graph..." 
+        progress={75}
+      />
     );
   }
-  
+
+  if (error) {
+    return (
+      <GraphErrorBoundary 
+        error={new Error(error)} 
+        onRetry={() => window.location.reload()}
+      />
+    );
+  }
+
   return (
     <GraphErrorBoundary>
       <div 
         ref={containerRef}
-        className={`knowledge-graph-container ${className} ${state.draggedFile ? 'dragging' : ''}`}
-        style={{ height }}
-        onDragEnter={showUpload ? handleDragEnter : undefined}
-        onDragOver={showUpload ? (e) => e.preventDefault() : undefined}
-        onDragLeave={showUpload ? handleDragLeave : undefined}
-        onDrop={showUpload ? handleDrop : undefined}
-        role="application"
-        aria-label="Interactive Knowledge Graph Visualization"
+        className={`knowledge-graph-container ${isDragging ? 'dragging' : ''}`}
+        style={{ height: `${height}px` }}
       >
         {/* Controls */}
-        {showControls && (
+        <div className="absolute top-4 left-4 z-10">
+          {/* Graph Controls */}
           <GraphControls
-            controls={controls}
-            searchQuery={state.searchQuery}
-            onSearchChange={(query) => updateState({ searchQuery: query })}
-            filterTags={state.filterTags}
-            onFilterTagsChange={(tags) => updateState({ filterTags: tags })}
-            availableTags={Array.from(new Set(state.graphData.nodes.flatMap(n => n.metadata?.tags || [])))}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            physicsEnabled={physicsEnabled}
+            onPhysicsToggle={handleTogglePhysics}
+            filterTags={filterTags}
+            onFilterChange={handleFilterChange}
+            onZoomFit={zoomToFit}
+            onCenter={centerGraph}
+            onReset={resetGraph}
+            onScreenshot={takeScreenshot}
             performanceMetrics={performanceMetrics}
+            // RAG Controls
+            useRAG={true} // Always true for hybrid mode
+            ragData={ragData}
+            onShowVectorTester={() => setShowVectorTester(!showVectorTester)}
+            showVectorTester={showVectorTester}
+            similarityThreshold={similarityThreshold}
+            onSimilarityThresholdChange={setSimilarityThreshold}
           />
-        )}
-        
-        {/* Node Details Panel */}
-        {state.selectedNode && (
-          <NodeDetails
-            node={state.selectedNode}
-            onClose={() => updateState({ selectedNode: null })}
-            relatedNodes={state.graphData.nodes.filter(n => {
-              const links = state.graphData.links.filter(l => {
-                const sourceId = typeof l.source === 'string' ? l.source : l.source.id;
-                const targetId = typeof l.target === 'string' ? l.target : l.target.id;
-                return (sourceId === state.selectedNode.id && targetId === n.id) ||
-                       (targetId === state.selectedNode.id && sourceId === n.id);
-              });
-              return links.length > 0;
-            })}
-          />
-        )}
-        
-        {/* Drag Preview */}
-        {state.draggedFile && (
-          <DragPreview
-            file={state.draggedFile}
-            connections={state.previewConnections}
-          />
-        )}
-        
-        {/* Graph Visualization */}
+          
+          {/* Vector Database Tester */}
+          {showVectorTester && (
+            <div className="vector-tester-overlay">
+              <VectorDatabaseTester accountId={accountId} />
+              <button 
+                onClick={() => setShowVectorTester(false)}
+                className="close-tester-btn"
+              >
+                Close Tester
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Graph */}
         <ForceGraph2D
           ref={graphRef}
-          graphData={filteredGraphData}
-          width={containerRef.current?.clientWidth || 800}
+          graphData={graphData}
+          width={containerRef.current?.offsetWidth}
           height={height}
-          nodeLabel={() => ''} // Disable default tooltip
           nodeCanvasObject={nodeCanvasObject}
           linkCanvasObject={linkCanvasObject}
           onNodeClick={handleNodeClick}
           onNodeHover={handleNodeHover}
-          onNodeDragEnd={(node) => {
-            // Save position for persistence
-            node.fx = node.x;
-            node.fy = node.y;
-          }}
+          linkLabel={link => link.label || ''}
+          linkHoverPrecision={10}
+          backgroundColor="transparent"
           enableNodeDrag={true}
-          enableZoomInteraction={true}
           enablePanInteraction={true}
-          backgroundColor="rgba(0, 0, 0, 0)"
-          // Performance optimizations
-          warmupTicks={50}
-          cooldownTicks={100}
-          cooldownTime={3000}
-          d3AlphaDecay={0.02}
-          d3VelocityDecay={0.3}
+          enableZoomInteraction={true}
+          cooldownTicks={physicsEnabled ? 100 : 0}
+          d3AlphaDecay={physicsEnabled ? 0.02 : 1}
+          d3VelocityDecay={physicsEnabled ? 0.1 : 1}
         />
+
+        {/* Node Details */}
+        {selectedNode && (
+          <div className="absolute top-4 right-4 z-10">
+            <NodeDetails
+              node={selectedNode}
+              onClose={() => setSelectedNode(null)}
+              relatedNodes={graphData.nodes.filter(n => 
+                graphData.links.some(link => 
+                  (link.source === selectedNode.id || link.source.id === selectedNode.id) &&
+                  (link.target === n.id || link.target.id === n.id)
+                )
+              )}
+            />
+          </div>
+        )}
+
+        {/* Drag Preview */}
+        {isDragging && onFileSelect && (
+          <DragPreview
+            onFileSelect={onFileSelect}
+            documents={filteredDocuments}
+          />
+        )}
       </div>
     </GraphErrorBoundary>
   );
-}; 
+} 

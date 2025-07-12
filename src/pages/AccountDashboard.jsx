@@ -98,18 +98,20 @@ function AccountDashboard() {
         .select('*')
         .order('created_at', { ascending: false });
 
-      // If error2 is because table doesn't exist, that's fine
-      const hasGlobalTable = !error2 || error2.code !== '42P01';
-      
-      // Combine results
-      const allGlobal = [
+      if (error2 && error2.code !== 'PGRST116') { // Ignore table not exists error
+        throw error2;
+      }
+
+      // Combine both sources
+      const allGlobalDocs = [
         ...(globalFromAccounts || []),
-        ...(hasGlobalTable && globalKnowledge ? globalKnowledge : [])
+        ...(globalKnowledge || [])
       ];
-      
-      setGlobalDocuments(allGlobal);
+
+      setGlobalDocuments(allGlobalDocs);
     } catch (error) {
       console.error('Error fetching global documents:', error);
+      setGlobalDocuments([]);
     } finally {
       setLoadingGlobal(false);
     }
@@ -139,16 +141,8 @@ function AccountDashboard() {
       })
       .subscribe();
     
-    // Also listen for manual updates from other components
-    const handleGlobalUpdate = () => {
-      fetchGlobalDocuments();
-    };
-    
-    window.addEventListener('globalKnowledgeUpdated', handleGlobalUpdate);
-    
     return () => {
       channel.unsubscribe();
-      window.removeEventListener('globalKnowledgeUpdated', handleGlobalUpdate);
     };
   }, []);
 
