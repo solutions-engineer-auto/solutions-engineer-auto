@@ -16,7 +16,6 @@ export const useAIChat = ({ documentId, accountData, onDocumentUpdate }) => {
   
   // Subscribe to realtime updates
   useEffect(() => {
-    console.log('[useAIChat] Effect running - documentId:', documentId, 'onDocumentUpdate:', !!onDocumentUpdate);
     if (!documentId) {
       return;
     }
@@ -32,12 +31,6 @@ export const useAIChat = ({ documentId, accountData, onDocumentUpdate }) => {
         },
         (payload) => {
           const msg = payload.new;
-          console.log('[useAIChat] Received message:', {
-            message_type: msg.message_type,
-            role: msg.role,
-            content_preview: msg.content?.substring(0, 100),
-            event_type: msg.event_data?.type
-          });
           
           if (msg.message_type === 'message') {
             // Regular chat message
@@ -86,57 +79,71 @@ export const useAIChat = ({ documentId, accountData, onDocumentUpdate }) => {
           } else if (msg.message_type === 'event') {
             // Agent event - show in chat and update activity
             const eventData = msg.event_data || {};
-            console.log('[useAIChat] Processing event:', {
-              eventType: eventData.type,
-              hasContent: !!eventData.content,
-              contentLength: eventData.content?.length,
-              eventDataKeys: Object.keys(eventData)
-            });
             
-            // Add to messages (showing agent thinking)
-            setMessages(prev => [...prev, {
-              id: msg.id,
-              role: 'assistant',
-              content: msg.content,
-              timestamp: msg.created_at,
-              isEvent: true,
-              eventType: eventData.type,
-              eventData: eventData
-            }]);
+            // Add to messages (filtering to avoid duplication with activity indicators)
+            // Use display metadata if available, otherwise fall back to pattern matching
+            const shouldAddToMessages = eventData.display 
+              ? eventData.display.persist_message !== false
+              : (!eventData.type.endsWith('_start') && 
+                 !eventData.type.endsWith('.started') &&
+                 eventData.type !== 'workflow_start' &&
+                 eventData.type !== 'document_ready');
             
-            // Update activity indicator
-            setCurrentActivity({
-              type: eventData.type,
-              message: msg.content
-            });
+            if (shouldAddToMessages) {
+              setMessages(prev => [...prev, {
+                id: msg.id,
+                role: 'assistant',
+                content: msg.content,
+                timestamp: msg.created_at,
+                isEvent: true,
+                eventType: eventData.type,
+                eventData: eventData
+              }]);
+            }
+            
+            // Update activity indicator only for ongoing operations
+            // Use display metadata if available, otherwise fall back to pattern matching
+            const shouldShowActivity = eventData.display
+              ? eventData.display.show_activity === true
+              : (eventData.type !== 'document_ready' && 
+                 !eventData.type.endsWith('_complete') && 
+                 !eventData.type.endsWith('.completed') &&
+                 !eventData.type.endsWith('_error') &&
+                 !eventData.type.endsWith('.failed') &&
+                 eventData.type !== 'workflow_start');
+            
+            if (shouldShowActivity) {
+              setCurrentActivity({
+                type: eventData.type,
+                message: msg.content,
+                eventData: eventData  // Pass full data for icon selection
+              });
+            }
             
             // Update progress if available
             if (eventData.progress !== undefined) {
               setGenerationProgress(eventData.progress);
             }
             
-            // Clear activity after completion
-            if (eventData.type === 'complete') {
-              setTimeout(() => {
-                setCurrentActivity(null);
-                setGenerationProgress(100);
-              }, 2000);
+            // Clear activity immediately when workflow is complete
+            // Individual stage completions will be replaced by the next stage's start event
+            // Support both old and new event formats
+            if (eventData.type === 'workflow_complete' || 
+                eventData.type === 'workflow.process.completed') {
+              setCurrentActivity(null);
+              setGenerationProgress(100);
             }
             
             // Handle document content updates
-            if ((eventData.type === 'generated' || eventData.type === 'document_ready') && eventData.content) {
-              console.log('[useAIChat] Document ready event received:', {
-                type: eventData.type,
-                contentLength: eventData.content?.length,
-                hasCallback: !!onDocumentUpdate
-              });
+            // Support both old and new event formats
+            if ((eventData.type === 'generated' || 
+                 eventData.type === 'document_ready' ||
+                 eventData.type === 'document.ready' ||
+                 eventData.type === 'workflow.document.ready') && eventData.content) {
               
               // Call the document update callback if provided
               if (onDocumentUpdate) {
-                console.log('[useAIChat] Calling onDocumentUpdate with content');
                 onDocumentUpdate(eventData.content);
-              } else {
-                console.warn('[useAIChat] No onDocumentUpdate callback provided');
               }
             }
           }

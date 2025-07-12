@@ -4,9 +4,11 @@ Section generation node - generates document sections sequentially
 from datetime import datetime
 from langchain_openai import ChatOpenAI
 from state import AgentState, DocumentSection
+from utils.prompts import get_section_prompt, get_context_adjustments, get_few_shot_examples, get_mermaid_enhancement
 from utils.supabase_client import supabase_manager
-from utils.prompts import get_section_prompt
+from constants.events import EventTypes
 import os
+import re
 
 
 llm = ChatOpenAI(
@@ -30,9 +32,6 @@ async def generate_section(
         for title, section in previous_sections.items():
             previous_content += f"\n### {title}\n{section['content'][:500]}...\n"
     
-    # Import enhanced prompts
-    from utils.prompts import get_section_prompt, get_context_adjustments, get_few_shot_examples
-    
     # Get the specialized prompt for this section type
     enhanced_section_prompt = get_section_prompt(section_info.get('title'), state.get('account_data', {}))
     
@@ -52,11 +51,17 @@ Target Length: {section_info.get('estimated_words', 300)} words
 
 Context from Task: {state['task']}
 
-Requirements to Address in this Section:
-{[req for req in state.get('key_requirements', []) if any(keyword in req.lower() for keyword in section_info.get('title', '').lower().split())]}
+All Key Requirements (emphasize those most relevant to this section):
+{state.get('key_requirements', [])}
+
+Specific Requirements for "{section_info.get('title')}":
+{[req for req in state.get('key_requirements', []) if any(keyword in req.lower() for keyword in section_info.get('title', '').lower().split()) or any(keyword in req.lower() for keyword in str(section_info.get('key_points', [])).lower().split())]}
 
 Hidden Concerns to Subtly Address:
 {state.get('hidden_concerns', [])}
+
+Strategic Positioning:
+{state.get('strategic_positioning', 'Position as the best solution for their specific needs')}
 {previous_content}
 
 Retrieved Context (if relevant to this section):
@@ -66,6 +71,8 @@ Context adjustments:
 {get_context_adjustments(state.get('account_data', {}))}
 
 {get_few_shot_examples('value_proposition')}
+
+{get_mermaid_enhancement(section_info.get('title', ''), state.get('task', '') + ' ' + str(section_info.get('key_points', [])))}
 
 Write this section to:
 1. Speak directly to {state.get('target_audience')}'s priorities
@@ -78,12 +85,20 @@ Write this section to:
 Format: Use markdown with compelling subheadings that draw the reader forward.
 
 Remember: Every sentence should either build trust, demonstrate value, or advance toward the close.
+
+CRITICAL: Return ONLY the section content in markdown format. Do not include any introductory text, meta-commentary, or explanations about what you're writing. Start directly with the section content.
+
+IMPORTANT: Do NOT include the section title as a header (no ## or ### at the beginning). The section title will be added automatically. Start directly with the content under this section.
 """
 
     try:
         response = await llm.ainvoke(generation_prompt)
         content = response.content
         word_count = len(content.split())
+        
+        
+        
+        
         
         return {
             "title": section_info.get('title'),
@@ -94,7 +109,9 @@ Remember: Every sentence should either build trust, demonstrate value, or advanc
         }
         
     except Exception as e:
-        print(f"[Generation] Error generating section {section_info.get('title')}: {e}")
+        # Log error but return error section
+        import traceback
+        traceback.print_exc()
         return {
             "title": section_info.get('title'),
             "content": f"[Error generating this section: {str(e)}]",
@@ -113,7 +130,7 @@ async def generate_sections(state: AgentState) -> AgentState:
     # Log generation start
     await supabase_manager.log_event(
         document_id=state["document_id"],
-        event_type="generation_start",
+        event_type=EventTypes.GENERATION_STARTED,
         content="Starting section-by-section generation",
         data={
             "sections_count": len(state["document_outline"]["sections"])
@@ -132,13 +149,12 @@ async def generate_sections(state: AgentState) -> AgentState:
         
         # Skip optional sections if we're running long
         if section.get("priority") == "optional" and total_words > 3500:
-            print(f"[Generation] Skipping optional section: {section.get('title')}")
             continue
         
         # Log section start
         await supabase_manager.log_event(
             document_id=state["document_id"],
-            event_type="section_generation",
+            event_type=EventTypes.SECTION_STARTED,
             content=f"Generating section {i+1}/{len(sections)}: {section.get('title')}",
             data={
                 "section_index": i,
@@ -162,7 +178,7 @@ async def generate_sections(state: AgentState) -> AgentState:
         # Log section completion
         await supabase_manager.log_event(
             document_id=state["document_id"],
-            event_type="section_complete",
+            event_type=EventTypes.SECTION_COMPLETED,
             content=f"Completed section: {section.get('title')}",
             data={
                 "section_title": section.get('title'),
@@ -172,6 +188,7 @@ async def generate_sections(state: AgentState) -> AgentState:
             thread_id=state["thread_id"],
             run_id=state["run_id"]
         )
+        
     
     # Update state with generated sections
     state["document_sections"] = generated_sections
@@ -179,7 +196,7 @@ async def generate_sections(state: AgentState) -> AgentState:
     # Log generation completion
     await supabase_manager.log_event(
         document_id=state["document_id"],
-        event_type="generation_complete",
+        event_type=EventTypes.GENERATION_COMPLETED,
         content=f"Generated {len(generated_sections)} sections",
         data={
             "total_sections": len(generated_sections),

@@ -4,8 +4,10 @@ Validation node - checks document quality and completeness
 from datetime import datetime
 from langchain_openai import ChatOpenAI
 from state import AgentState, ValidationResult
+from utils.prompts import get_validation_criteria, AGENT_PERSONAS, get_reasoning_steps, get_context_adjustments
+from utils.mermaid_generator import extract_mermaid_from_content, validate_mermaid_syntax
 from utils.supabase_client import supabase_manager
-from utils.prompts import get_validation_criteria
+from constants.events import EventTypes
 import os
 import json
 
@@ -26,8 +28,8 @@ async def validate_document(state: AgentState) -> AgentState:
     # Log validation start
     await supabase_manager.log_event(
         document_id=state["document_id"],
-        event_type="validation_start",
-        content="Starting document validation",
+        event_type=EventTypes.VALIDATION_STARTED,
+        content="Validating document quality and completeness",
         thread_id=state["thread_id"],
         run_id=state["run_id"]
     )
@@ -41,8 +43,16 @@ async def validate_document(state: AgentState) -> AgentState:
     for section_title, section_data in state["document_sections"].items():
         full_content += f"\n\n## {section_title}\n{section_data['content']}"
     
-    # Import persona enhancement
-    from utils.prompts import AGENT_PERSONAS, get_reasoning_steps, get_context_adjustments
+    # Validate any mermaid diagrams
+    mermaid_diagrams = extract_mermaid_from_content(full_content)
+    mermaid_validation_issues = []
+    
+    for diagram in mermaid_diagrams:
+        if not diagram['validation']['valid']:
+            mermaid_validation_issues.extend([
+                f"Mermaid diagram error: {error}" 
+                for error in diagram['validation']['errors']
+            ])
     
     persona = AGENT_PERSONAS["qa_director"]
     
@@ -75,6 +85,9 @@ Quality Checks:
 
 Context adjustments:
 {get_context_adjustments(state.get('account_data', {}))}
+
+Mermaid Diagrams Found: {len(mermaid_diagrams)}
+Mermaid Validation Issues: {mermaid_validation_issues if mermaid_validation_issues else 'None'}
 
 Document Content:
 {full_content[:8000]}  # Limit to prevent token overflow
@@ -130,10 +143,13 @@ Remember: Your expertise helps distinguish good from great. A technically correc
             avg_quality = sum(quality_scores.values()) / len(quality_scores) if quality_scores else 0.5
             
             # Create validation result
+            all_issues = validation_data.get("issues", [])
+            all_issues.extend(mermaid_validation_issues)
+            
             validation_result: ValidationResult = {
-                "is_valid": validation_data.get("is_valid", True),
+                "is_valid": validation_data.get("is_valid", True) and len(mermaid_validation_issues) == 0,
                 "completeness_score": validation_data.get("completeness_score", 0.8),
-                "issues": validation_data.get("issues", []),
+                "issues": all_issues,
                 "suggestions": validation_data.get("suggestions", [])
             }
             
@@ -144,18 +160,15 @@ Remember: Your expertise helps distinguish good from great. A technically correc
             for section_title in state["document_sections"]:
                 state["document_sections"][section_title]["quality_score"] = avg_quality
             
-            # Log validation results
+            # Log successful validation
             await supabase_manager.log_event(
                 document_id=state["document_id"],
-                event_type="validation_complete",
-                content=f"Document validation complete - Score: {avg_quality:.2f}",
+                event_type=EventTypes.VALIDATION_COMPLETED,
+                content=f"Document validation complete - Quality score: {avg_quality:.2f}",
                 data={
-                    "is_valid": validation_result["is_valid"],
-                    "completeness_score": validation_result["completeness_score"],
                     "quality_score": avg_quality,
-                    "issues_count": len(validation_result["issues"]),
-                    "validation_details": validation_data,
-                    "duration_seconds": (datetime.now() - start_time).total_seconds()
+                    "is_valid": validation_result["is_valid"],
+                    "issues_count": len(validation_result["issues"])
                 },
                 thread_id=state["thread_id"],
                 run_id=state["run_id"]
@@ -165,7 +178,18 @@ Remember: Your expertise helps distinguish good from great. A technically correc
             raise ValueError("Could not parse validation response")
             
     except Exception as e:
-        print(f"[Validation] Error validating document: {e}")
+        # Log error but continue with default validation
+        import traceback
+        traceback.print_exc()
+        
+        # Log validation failure
+        await supabase_manager.log_event(
+            document_id=state["document_id"],
+            event_type=EventTypes.VALIDATION_FAILED,
+            content=f"Validation failed: {str(e)}",
+            thread_id=state["thread_id"],
+            run_id=state["run_id"]
+        )
         
         # Set default validation results
         state["validation_results"] = {
@@ -176,18 +200,6 @@ Remember: Your expertise helps distinguish good from great. A technically correc
         }
         state["overall_quality_score"] = 0.7
         
-        # Log error
-        await supabase_manager.log_event(
-            document_id=state["document_id"],
-            event_type="validation_error",
-            content="Error during validation, using defaults",
-            data={
-                "error": str(e),
-                "duration_seconds": (datetime.now() - start_time).total_seconds()
-            },
-            thread_id=state["thread_id"],
-            run_id=state["run_id"]
-        )
         
         state["errors"] = state.get("errors", []) + [f"Validation error: {str(e)}"]
     

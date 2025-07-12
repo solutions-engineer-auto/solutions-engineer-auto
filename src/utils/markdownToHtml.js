@@ -4,7 +4,6 @@
  */
 
 export function convertMarkdownToHtml(text) {
-  console.log('[convertMarkdownToHtml] Input text length:', text?.length);
   if (!text) return '';
   
   // Enhanced markdown to HTML conversion
@@ -28,7 +27,16 @@ export function convertMarkdownToHtml(text) {
   const codeBlocks = [];
   const inlineCodes = [];
   
-  // Extract code blocks first
+  // Extract mermaid blocks first (before general code blocks)
+  const mermaidBlocks = [];
+  html = html.replace(/```mermaid\n([\s\S]*?)```/g, (match, code) => {
+    mermaidBlocks.push(code.trim());
+    // Use a placeholder that won't be affected by markdown formatting
+    return `MERMAIDPLACEHOLDER${mermaidBlocks.length - 1}MERMAIDPLACEHOLDER`;
+  });
+  
+  
+  // Extract code blocks (non-mermaid)
   html = html.replace(/```([\s\S]*?)```/g, (match, code) => {
     codeBlocks.push(`<pre><code>${escapeHtml(code.trim())}</code></pre>`);
     return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
@@ -42,6 +50,7 @@ export function convertMarkdownToHtml(text) {
   
   // Now escape HTML in the remaining content
   html = escapeHtml(html);
+  
   
   // Headers (h1-h6)
   html = html.replace(/^###### (.*$)/gim, '<h6>$1</h6>');
@@ -164,6 +173,15 @@ export function convertMarkdownToHtml(text) {
   });
   // Wrap table rows in table tags
   html = html.replace(/(<tr>[\s\S]+?<\/tr>)/g, '<table style="border-collapse: collapse; width: 100%;">$1</table>');
+  
+  // Restore mermaid blocks as special divs for TipTap
+  mermaidBlocks.forEach((code, index) => {
+    const placeholder = `MERMAIDPLACEHOLDER${index}MERMAIDPLACEHOLDER`;
+    if (html.includes(placeholder)) {
+      const mermaidDiv = `<div data-type="mermaid" data-content="${escapeHtml(code)}"></div>`;
+      html = html.replace(placeholder, mermaidDiv);
+    }
+  });
   
   // Restore code blocks and inline code
   codeBlocks.forEach((code, index) => {

@@ -36,18 +36,30 @@ class SupabaseManager:
         thread_id: Optional[str] = None,
         run_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        """Log an event to chat_messages table"""
+        """Log an event to chat_messages table with enhanced display metadata"""
         try:
+            # Merge any existing data with event data
+            event_data = {
+                "type": event_type,
+                "timestamp": datetime.now().isoformat(),
+                **(data or {})
+            }
+            
+            # Auto-generate display config if not provided (for backward compatibility)
+            if "display" not in event_data and "." in event_type:
+                # This is a new-style event, auto-configure display
+                from constants.events import DisplayConfig
+                event_data["display"] = DisplayConfig.get_display_config(
+                    event_type, 
+                    is_error="failed" in event_type or "error" in event_type
+                )
+            
             result = self.client.table("chat_messages").insert({
                 "document_id": document_id,
                 "role": "assistant",
                 "content": content,
                 "message_type": "event",
-                "event_data": {
-                    "type": event_type,
-                    "timestamp": datetime.now().isoformat(),
-                    **(data or {})
-                },
+                "event_data": event_data,
                 "thread_id": thread_id,
                 "run_id": run_id
             }).execute()
@@ -157,6 +169,46 @@ class SupabaseManager:
         except Exception as e:
             print(f"[SupabaseManager] Failed to log message: {e}")
             return False
+    
+    async def get_document_content(
+        self,
+        document_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """Fetch document content and metadata"""
+        try:
+            result = self.client.table("documents")\
+                .select("content, metadata, title, status")\
+                .eq("id", document_id)\
+                .execute()
+            
+            if result.data and len(result.data) > 0:
+                return result.data[0]
+            return None
+        except Exception as e:
+            print(f"[SupabaseManager] Failed to fetch document content: {e}")
+            return None
+    
+    async def fetch_account_by_id(
+        self,
+        account_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """Fetch complete account data by ID"""
+        try:
+            result = self.client.table("accounts")\
+                .select("*")\
+                .eq("id", account_id)\
+                .single()\
+                .execute()
+            
+            if result.data:
+                print(f"[SupabaseManager] Successfully fetched account: {account_id}")
+                return result.data
+            else:
+                print(f"[SupabaseManager] No account found with ID: {account_id}")
+                return None
+        except Exception as e:
+            print(f"[SupabaseManager] Failed to fetch account: {e}")
+            return None
 
 
 # Global instance
