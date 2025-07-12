@@ -45,9 +45,11 @@ async def assemble_and_polish(state: AgentState) -> AgentState:
     # Build the document content
     document_parts = [f"# {state['document_outline']['document_type'].replace('_', ' ').title()} for {state.get('account_data', {}).get('name', 'Client')}"]
     
-    # Add metadata
-    document_parts.append(f"\n*Generated on: {datetime.now().strftime('%B %d, %Y')}*")
-    document_parts.append(f"*Prepared for: {state.get('account_data', {}).get('contact', 'Client Team')}*\n")
+    # Add metadata with proper markdown line breaks
+    document_parts.append("")  # Empty line after title
+    document_parts.append(f"**Written:** {datetime.now().strftime('%B %d, %Y')}  ")  # Two spaces at end for line break
+    document_parts.append(f"**Prepared for:** {state.get('account_data', {}).get('contact', 'Client Team')}  ")
+    document_parts.append("")  # Empty line after metadata
     
     # Add table of contents for longer documents
     if len(sections_in_order) > 5:
@@ -95,10 +97,25 @@ CRITICAL: Return ONLY the executive summary content in markdown format. Do not i
             summary_response = await llm.ainvoke(exec_summary_prompt)
             state["executive_summary"] = summary_response.content
             
-            # Insert executive summary at the beginning
-            parts = assembled_document.split("\n", 4)
-            if len(parts) > 4:
-                assembled_document = "\n".join(parts[:4]) + "\n\n## Executive Summary\n\n" + summary_response.content + "\n" + parts[4]
+            # Insert executive summary after metadata
+            # Find the position after both metadata lines
+            lines = assembled_document.split("\n")
+            insert_position = 0
+            
+            # Skip title and empty lines, find after "Prepared for" line
+            for i, line in enumerate(lines):
+                if line.strip().startswith("*Prepared for:"):
+                    insert_position = i + 1
+                    # Skip any empty lines after metadata
+                    while insert_position < len(lines) and not lines[insert_position].strip():
+                        insert_position += 1
+                    break
+            
+            # Insert the executive summary
+            lines.insert(insert_position, "## Executive Summary\n")
+            lines.insert(insert_position + 1, summary_response.content)
+            lines.insert(insert_position + 2, "")
+            assembled_document = "\n".join(lines)
         except Exception as e:
             # Log error but continue without executive summary
             import traceback
