@@ -150,7 +150,79 @@ export function processAIEdits(editor, aiResponse, onProgress) {
     }
   });
   
+  // Show notification about preview changes
+  if (results.successful > 0) {
+    showSuggestionNotification(results.successful);
+  }
+  
   return results;
+}
+
+/**
+ * Show a notification that suggestions are preview only
+ */
+function showSuggestionNotification(count) {
+  // Small delay to ensure modal is closing
+  setTimeout(() => {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = 'diff-suggestion-notification';
+    notification.style.cssText = `
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(6, 182, 212, 0.95);
+      color: white;
+      padding: 16px 24px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      z-index: 100000;
+      font-family: system-ui, -apple-system, sans-serif;
+      animation: slideDown 0.3s ease-out;
+    `;
+    
+    notification.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="font-size: 24px;">💡</div>
+        <div>
+          <div style="font-weight: 600; margin-bottom: 4px;">
+            ${count} suggestion${count > 1 ? 's' : ''} added
+          </div>
+          <div style="font-size: 14px; opacity: 0.9;">
+            Click on highlighted text to accept or reject changes
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Add animation
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideDown {
+        from {
+          transform: translate(-50%, -20px);
+          opacity: 0;
+        }
+        to {
+          transform: translate(-50%, 0);
+          opacity: 1;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(notification);
+    
+    // Remove after 5 seconds
+    setTimeout(() => {
+      notification.style.animation = 'slideDown 0.3s ease-out reverse';
+      setTimeout(() => {
+        notification.remove();
+        style.remove();
+      }, 300);
+    }, 5000);
+  }, 100); // 100ms delay
 }
 
 /**

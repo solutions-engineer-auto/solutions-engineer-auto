@@ -231,11 +231,38 @@ Provide edit suggestions in the JSON format specified.`;
     }
 
     // Parse the JSON response
-    const suggestions = attemptJSONRepair(content) || JSON.parse(content);
+    let suggestions;
+    try {
+      suggestions = attemptJSONRepair(content) || JSON.parse(content);
+    } catch (parseError) {
+      console.error('[DirectAIEditService] JSON Parse Error:', {
+        error: parseError.message,
+        contentLength: content.length,
+        contentPreview: content.substring(0, 200) + '...',
+        contentEnd: '...' + content.substring(content.length - 200)
+      });
+      
+      // Try to extract error position
+      const match = parseError.message.match(/position (\d+)/);
+      if (match) {
+        const position = parseInt(match[1]);
+        console.error('[DirectAIEditService] Error around position:', {
+          before: content.substring(Math.max(0, position - 50), position),
+          at: content.substring(position, position + 50)
+        });
+      }
+      
+      throw new Error('Failed to parse AI response. The response may be too long or malformed.');
+    }
     
     // Validate the response structure
+    if (!suggestions || typeof suggestions !== 'object') {
+      throw new Error('Invalid response format from AI - not an object');
+    }
+    
     if (!suggestions.edits || !Array.isArray(suggestions.edits)) {
-      throw new Error('Invalid response format from AI');
+      console.error('[DirectAIEditService] Invalid response structure:', suggestions);
+      throw new Error('Invalid response format from AI - missing edits array');
     }
 
     // Ensure all edits have required fields

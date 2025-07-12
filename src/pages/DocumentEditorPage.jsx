@@ -31,8 +31,6 @@ function DocumentEditorPage() {
   const [saving, setSaving] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const [showExportModal, setShowExportModal] = useState(false)
-  const [showAIModal, setShowAIModal] = useState(false)
-  const [selectedText, setSelectedText] = useState('')
   const [initialContent, setInitialContent] = useState('')
   const [showAIChat, setShowAIChat] = useState(false)
   const [showAIEditModal, setShowAIEditModal] = useState(false)
@@ -49,18 +47,17 @@ function DocumentEditorPage() {
   // const [pendingChanges, setPendingChanges] = useState(0)
 
   // Handle AI edit request from DiffExtension
-  const handleAIEditRequest = useCallback(({ quarantine }) => {
-    console.log('[DiffExtension] AI edit requested:', quarantine)
+  const handleAIEditRequest = useCallback(({ selection }) => {
+    console.log('[DiffExtension] AI edit requested:', selection)
     
-    // Store the selection for AI processing
-    setSelectedText(quarantine.content)
+    // Store the selection text for AI processing
+    setSelectedTextForEdit(selection?.text || '')
     
-    // TODO: In Phase 3, this will trigger the actual AI API call
-    // For now, just show the AI modal or chat
-    setShowAIModal(true)
+    // Show the correct AI Edit modal (NOT the placeholder "AI Text Regeneration" modal)
+    setShowAIEditModal(true)
     
-    // Store quarantine zone for later use
-    window.tempQuarantineZone = quarantine
+    // Store selection info for later use
+    window.tempSelectionInfo = selection
   }, [])
 
   // Handle accepting a change
@@ -258,7 +255,7 @@ function DocumentEditorPage() {
             setAccountData(fallbackData)
           }
         } catch {
-          // Even on error, set accountData with the ID from URL
+          // Even on error, set accountData with the ID
           const errorFallbackData = { id: accountId, name: 'Account' };
           setAccountData(errorFallbackData)
         }
@@ -387,7 +384,7 @@ function DocumentEditorPage() {
     return () => {
       window.document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [editor, handleSave, setShowAIModal, setSelectedText, setShowAIChat])
+  }, [editor, handleSave, setShowAIChat])
 
   // Removed document subscription - content now flows only through chat messages
 
@@ -444,9 +441,10 @@ function DocumentEditorPage() {
   const handleAIEditSubmit = useCallback(async (instruction) => {
     if (!editor || !selectedTextForEdit) return;
     
+    let loadingMessage;
     try {
       // Show loading notification
-      const loadingMessage = document.createElement('div');
+      loadingMessage = document.createElement('div');
       loadingMessage.className = 'fixed top-4 right-4 glass-panel p-4 bg-cyan-500/20 border-cyan-500/30 z-50';
       loadingMessage.innerHTML = `
         <div class="flex items-center space-x-2">
@@ -465,8 +463,13 @@ function DocumentEditorPage() {
       // Process the AI response
       const result = processAIEdits(editor, aiResponse);
       
-      // Remove loading and show success
-      loadingMessage.remove();
+      // Remove loading notification
+      if (loadingMessage && loadingMessage.parentNode) {
+        loadingMessage.remove();
+      }
+      
+      // ALWAYS close the modal first, before showing any notifications
+      setShowAIEditModal(false);
       
       // Show appropriate message based on results
       if (result.successful > 0) {
@@ -482,8 +485,8 @@ function DocumentEditorPage() {
         `;
         document.body.appendChild(successMessage);
         setTimeout(() => successMessage.remove(), 3000);
-      } else {
-        // No suggestions were applied
+      } else if (result.errors.length > 0 && result.errors[0] !== 'No changes suggested by AI') {
+        // Only show "no changes" message if it's not just an empty response
         const infoMessage = document.createElement('div');
         infoMessage.className = 'fixed top-4 right-4 glass-panel p-4 bg-cyan-500/20 border-cyan-500/30 z-50';
         infoMessage.innerHTML = `
@@ -496,14 +499,22 @@ function DocumentEditorPage() {
         setTimeout(() => infoMessage.remove(), 4000);
       }
       
-      // Log results
+      // Log results for debugging
       console.log('[AI Edit] Results:', result);
       if (result.errors.length > 0) {
-        console.warn('[AI Edit] Errors:', result.errors);
+        console.log('[AI Edit] Errors:', result.errors);
       }
       
     } catch (error) {
       console.error('[AI Edit] Error:', error);
+      
+      // Remove loading notification if it exists
+      if (loadingMessage && loadingMessage.parentNode) {
+        loadingMessage.remove();
+      }
+      
+      // ALWAYS close modal on error
+      setShowAIEditModal(false);
       
       // Show error notification
       const errorMessage = document.createElement('div');
@@ -511,13 +522,13 @@ function DocumentEditorPage() {
       errorMessage.innerHTML = `
         <div class="flex items-center space-x-2">
           <span class="text-red-400">⚠️</span>
-          <span class="text-white">Failed to get AI suggestions</span>
+          <span class="text-white">Failed to get AI suggestions: ${error.message}</span>
         </div>
       `;
       document.body.appendChild(errorMessage);
       setTimeout(() => errorMessage.remove(), 5000);
     }
-  }, [editor, selectedTextForEdit, docId]);
+  }, [editor, selectedTextForEdit]);
 
   // Handle AI-generated document replacement
   const handleDocumentReplacement = useCallback((markdownContent) => {
@@ -541,7 +552,7 @@ function DocumentEditorPage() {
       
       // Optionally close the AI chat panel
       // setShowAIChat(false);
-    } catch (error) {
+    } catch {
       alert('Failed to replace document content. Please try again.');
     }
   }, [editor]);
@@ -969,46 +980,6 @@ function DocumentEditorPage() {
           }
         }}
       />
-
-      {/* AI Regeneration Modal */}
-      {showAIModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="glass-panel p-8 max-w-lg w-full mx-4">
-            <h2 className="text-2xl font-light text-white mb-6">AI Text Regeneration</h2>
-            <p className="text-sm text-cyan-400 mb-4">[UI Ready - Backend Integration Pending]</p>
-            <p className="text-white/70 mb-4">Selected text:</p>
-            <div className="bg-black/40 p-4 rounded-lg mb-6 text-white/80 italic">
-              "{selectedText}"
-            </div>
-            <p className="text-white/70 mb-6">
-              How would you like to modify this text?
-            </p>
-            <textarea
-                              className="w-full p-3 bg-black/40 text-white rounded-lg border border-white/10 focus:border-cyan-500/50 transition-colors outline-none"
-              rows={3}
-              placeholder="e.g., Make it more formal, add technical details, simplify..."
-            />
-            <div className="flex justify-end space-x-3 mt-6">
-              <button
-                onClick={() => setShowAIModal(false)}
-                className="btn-volcanic"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  // TODO: Integrate with AI service when ready
-                  alert('AI integration pending - this button is ready for backend connection')
-                  setShowAIModal(false)
-                }}
-                className="btn-volcanic-primary"
-              >
-                Regenerate
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* AI Chat Panel */}
       <AIChatPanel 

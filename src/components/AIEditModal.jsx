@@ -12,6 +12,15 @@ const AIEditModal = ({ isOpen, onClose, onSubmit, selectedText }) => {
     }
   }, [isOpen]);
 
+  // Reset loading state when modal opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      // Reset state when modal closes
+      setLoading(false);
+      setInstruction('');
+    }
+  }, [isOpen]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!instruction.trim()) return;
@@ -20,16 +29,17 @@ const AIEditModal = ({ isOpen, onClose, onSubmit, selectedText }) => {
     try {
       await onSubmit(instruction);
       setInstruction('');
-      onClose();
+      // Don't automatically close - let parent handle it after processing is complete
+      // onClose();
     } catch (error) {
       console.error('Error submitting instruction:', error);
-    } finally {
-      setLoading(false);
+      setLoading(false); // Only reset loading on error
     }
+    // Don't reset loading on success - parent will close modal
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Escape' && !loading) {
+    if (e.key === 'Escape') {  // Remove loading check - always allow escape
       onClose();
     }
   };
@@ -84,7 +94,7 @@ const AIEditModal = ({ isOpen, onClose, onSubmit, selectedText }) => {
               type="button"
               onClick={onClose}
               className="btn-volcanic"
-              disabled={loading}
+              disabled={false}  // Always allow cancel
             >
               Cancel
             </button>

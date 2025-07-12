@@ -111,19 +111,28 @@ export const DiffMark = Mark.create({
       HTMLAttributes['data-status'] === 'accepted' ? 'diff-accepted' : ''
     ].filter(Boolean).join(' ')
     
-    // Create inline styles to ensure visibility
+    // Create inline styles that show these are SUGGESTIONS
     const baseStyles = [
       `background-color: ${color}1a`,
-      `border-bottom: 2px solid ${color}`,
+      `border: 2px solid ${color}`,  // Solid border as requested
       'position: relative',
-      'padding: 1px 2px',  // Add padding for better visibility
-      'cursor: pointer'
+      'padding: 2px 4px',
+      'cursor: pointer',
+      'border-radius: 3px',
+      'transition: all 0.2s ease'
     ]
     
     // Add type-specific styles
     if (type === 'deletion') {
-      baseStyles.push('text-decoration: line-through')
-      baseStyles.push('opacity: 0.8')
+      // Don't strike through - just show it would be deleted
+      baseStyles.push(`background-color: ${color}20`)
+      baseStyles.push('opacity: 0.7')
+    } else if (type === 'addition') {
+      // Show what would be added with a different style
+      baseStyles.push(`background-color: ${color}15`)
+    } else if (type === 'modification') {
+      // Show it would be modified
+      baseStyles.push(`background-color: ${color}15`)
     }
     
     const inlineStyle = baseStyles.join('; ')
@@ -139,7 +148,8 @@ export const DiffMark = Mark.create({
       'span',
       mergeAttributes(HTMLAttributes, {
         class: classes,
-        style: inlineStyle
+        style: inlineStyle,
+        title: `Suggested ${type} - Click to accept/reject`
       }),
       0
     ]

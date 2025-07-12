@@ -670,7 +670,9 @@ export const DiffExtensionV2 = Extension.create({
         return true
       },
       
+      // DISABLED: Cmd+K is now handled in DocumentEditorPage to avoid conflicts
       // Request AI edit
+      /*
       'Mod-k': () => {
         const { selection } = this.editor.state
         if (!selection.empty && this.options.onRequestEdit) {
@@ -685,6 +687,7 @@ export const DiffExtensionV2 = Extension.create({
         }
         return true
       }
+      */
     }
   }
 })
