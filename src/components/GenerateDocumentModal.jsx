@@ -187,27 +187,42 @@ export function GenerateDocumentModal({ isOpen, onClose, onSubmit, accountName, 
 
   return createPortal(
     <div 
-      className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
       onClick={handleBackdropClick}
     >
-      <div className={`glass-panel p-8 ${isGenerating ? 'max-w-4xl' : 'max-w-2xl'} w-full mx-4 transition-all duration-300`}>
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-primary-light mb-2">
-            {isGenerating ? 'Generating Document...' : 'Generate Document'}
-          </h2>
-          {accountName && (
-            <p className="text-gray-400">
-              For: <span className="text-primary-lighter">{accountName}</span>
-            </p>
+      <div className={`glass-panel ${isGenerating ? 'max-w-4xl' : 'max-w-md'} w-full p-6 relative animate-in fade-in zoom-in duration-200`}>
+        {/* Modal Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-xl font-light text-white">
+              {isGenerating ? 'Generating Document' : 'Generate Document'}
+            </h2>
+            {accountName && (
+              <p className="text-sm text-white/60 mt-1">
+                For {accountName}
+              </p>
+            )}
+          </div>
+          {!isGenerating && (
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              aria-label="Close modal"
+              disabled={isSubmitting}
+            >
+              <svg className="w-5 h-5 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           )}
         </div>
 
         {!isGenerating ? (
-          <form onSubmit={handleSubmit}>
-            <div className="mb-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
               <label 
                 htmlFor="prompt" 
-                className="block text-sm font-medium text-gray-300 mb-2"
+                className="block text-sm font-light text-white/80 mb-2"
               >
                 What document would you like to create?
               </label>
@@ -216,34 +231,38 @@ export function GenerateDocumentModal({ isOpen, onClose, onSubmit, accountName, 
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="Describe the document you need (e.g., 'Create a technical architecture document for their cloud migration project')"
-                className="w-full min-h-[150px] p-3 bg-background-lighter border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-y"
+                className="w-full min-h-[150px] px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white 
+                         placeholder-white/40 hover:bg-white/15 focus:bg-white/15 
+                         focus:border-cyan-400/50 focus:outline-none transition-all resize-y"
                 disabled={isSubmitting}
                 autoFocus
               />
             </div>
 
-            <div className="flex justify-end space-x-3">
+            <div className="flex justify-end space-x-3 pt-2">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="px-6 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="btn-volcanic px-5 py-2.5 text-sm font-light"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={!prompt.trim() || isSubmitting}
-                className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="btn-volcanic-primary px-5 py-2.5 text-sm font-light relative overflow-hidden"
               >
-                {isSubmitting ? 'Starting...' : 'Generate'}
+                <span className="relative z-10">
+                  {isSubmitting ? 'Starting...' : 'Generate Document'}
+                </span>
               </button>
             </div>
           </form>
         ) : (
           <div className="space-y-4">
             {/* Activity Logs */}
-            <div className="bg-background-lighter rounded-lg p-4 max-h-[60vh] overflow-y-auto">
+            <div className="rounded-lg bg-white/5 border border-white/10 p-4 max-h-[60vh] overflow-y-auto">
               <div className="space-y-3">
                 {messages.map((message, index) => (
                   <AIMessage 
@@ -259,8 +278,10 @@ export function GenerateDocumentModal({ isOpen, onClose, onSubmit, accountName, 
             </div>
 
             {/* Status Message */}
-            <div className="text-center text-gray-400">
-              <p>Your document is being generated. You'll be redirected when it's ready.</p>
+            <div className="text-center">
+              <p className="text-sm text-white/60">
+                Your document is being generated. You'll be redirected when it's ready.
+              </p>
             </div>
           </div>
         )}
