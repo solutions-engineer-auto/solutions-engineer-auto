@@ -1,3 +1,8 @@
+### Overview
+
+ this project is an aid for solutions engineers in writing and contributing to sales documents in the sales process to a prospect. Solutions engineers typically spend a lot of time writing and editing these documents, which are basically curating the same document to many different prospects, depending on their needs and so forth.
+
+
 ### 1\. Common User Flows
 
 This section outlines the primary paths a user will take through the application, reflecting the current implementation and the planned backend integration.
@@ -61,7 +66,8 @@ The database will be a managed PostgreSQL instance provided by Supabase. The cur
 * **account\_data\_sources** (For storing reference material)  
   * id (UUID, Primary Key)  
   * account\_id (UUID, Foreign Key to accounts.id, Index)  
-  * ...
+  * name (TEXT)
+  * content (TEXT)
 
 ### 3\. API Endpoints
 

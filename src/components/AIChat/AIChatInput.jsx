@@ -4,9 +4,8 @@ import { Send, Mic } from 'lucide-react';
 const AIChatInput = ({ 
   onSendMessage, 
   isDisabled,
-  isListening,
   isSpeechSupported,
-  toggleListening 
+  onMicrophoneClick
 }) => {
   const [message, setMessage] = useState('');
   const textareaRef = useRef(null);
@@ -47,8 +46,8 @@ const AIChatInput = ({
    * Toggles the voice recognition listening state.
    */
   const handleToggleListening = () => {
-    if (!isDisabled && toggleListening) {
-      toggleListening(setMessage);
+    if (!isDisabled && onMicrophoneClick) {
+      onMicrophoneClick();
     }
   };
 
@@ -70,8 +69,8 @@ const AIChatInput = ({
             type="button"
             onClick={handleToggleListening}
             disabled={isDisabled}
-            className={`p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 ${isListening ? 'text-red-500 animate-pulse' : ''}`}
-            aria-label={isListening ? 'Stop recording' : 'Start recording'}
+            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
+            aria-label={'Start recording'}
           >
             <Mic size={20} />
           </button>
