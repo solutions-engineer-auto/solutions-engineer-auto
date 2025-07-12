@@ -214,11 +214,31 @@ const MermaidNodeView = ({ node, updateAttributes, selected }) => {
   const [isEditing, setIsEditing] = useState(false)
   const [tempContent, setTempContent] = useState(node.attrs.content)
   const [isRendering, setIsRendering] = useState(false)
+  const [hasRendered, setHasRendered] = useState(false)
+  const renderTimeoutRef = useRef(null)
 
   // Render the Mermaid diagram
   const renderDiagram = useCallback(async () => {
-    if (!containerRef.current || !node.attrs.content) {
+    if (!containerRef.current || !node.attrs.content || isRendering) {
       return
+    }
+
+    // Ensure we're in the DOM and properly mounted
+    if (!containerRef.current.parentElement) {
+      console.warn('MermaidNode: Container not in DOM yet, skipping render')
+      return
+    }
+
+    // Additional check: ensure the parent element is actually attached to the document
+    if (!document.contains(containerRef.current)) {
+      console.warn('MermaidNode: Container not attached to document, skipping render')
+      return
+    }
+
+    // Clear any pending render timeout
+    if (renderTimeoutRef.current) {
+      clearTimeout(renderTimeoutRef.current)
+      renderTimeoutRef.current = null
     }
 
     setIsRendering(true)
@@ -237,6 +257,11 @@ const MermaidNodeView = ({ node, updateAttributes, selected }) => {
       div.textContent = node.attrs.content
       containerRef.current.appendChild(div)
 
+      // Additional safety check before rendering
+      if (!document.getElementById(id)) {
+        throw new Error('Diagram element not properly created')
+      }
+
       // Render the diagram
       await mermaid.run({
         querySelector: `#${id}`,
@@ -245,32 +270,61 @@ const MermaidNodeView = ({ node, updateAttributes, selected }) => {
       setIsRendering(false)
     } catch (err) {
       console.error('Mermaid rendering error:', err)
-      setError(err.message || 'Failed to render diagram')
+      const errorMessage = err.message || err.str || (typeof err === 'string' ? err : 'Failed to render diagram')
+      setError(errorMessage)
       setIsRendering(false)
     }
   }, [node.attrs.content])
 
-  // Force complete edit/save cycle on mount to fix initial display issues
+  // Render diagram only after component is mounted and has rendered
   useEffect(() => {
-    if (node.attrs.content) {
-      // Force a complete re-render cycle by simulating edit then save
-      setIsEditing(true)
-      setTempContent(node.attrs.content)
+    if (node.attrs.content && !hasRendered && !isEditing) {
+      // Use requestAnimationFrame to ensure DOM is ready
+      const rafId = requestAnimationFrame(() => {
+        // Use a small timeout to ensure React has finished mounting
+        renderTimeoutRef.current = setTimeout(async () => {
+          if (containerRef.current && containerRef.current.parentElement && document.contains(containerRef.current)) {
+            await renderDiagram()
+            setHasRendered(true)
+          }
+          renderTimeoutRef.current = null
+        }, 50)
+      })
       
-      setTimeout(() => {
-        // Simulate clicking save
-        updateAttributes({ content: node.attrs.content })
-        setIsEditing(false)
-      }, 50)
+      return () => cancelAnimationFrame(rafId)
     }
-  }, []) // Empty deps to run only on mount
+  }, [node.attrs.content, hasRendered, isEditing])
   
-  // Render diagram when content changes
+  // Reset hasRendered when content changes significantly
   useEffect(() => {
-    if (!isEditing && node.attrs.content) {
-      renderDiagram()
+    if (tempContent !== node.attrs.content && !isEditing) {
+      setHasRendered(false)
+      setTempContent(node.attrs.content)
     }
-  }, [node.attrs.content, isEditing, renderDiagram])
+  }, [node.attrs.content, tempContent, isEditing])
+
+  // Re-render when content changes (but not on initial mount)
+  useEffect(() => {
+    if (!isEditing && node.attrs.content && hasRendered) {
+      // Small delay to ensure any previous renders are complete
+      const timer = setTimeout(async () => {
+        if (containerRef.current && document.contains(containerRef.current)) {
+          await renderDiagram()
+        }
+      }, 100)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [node.attrs.content, isEditing, hasRendered])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (renderTimeoutRef.current) {
+        clearTimeout(renderTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Handle edit mode
   const handleEdit = () => {

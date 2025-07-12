@@ -33,6 +33,8 @@ const AIActivityIndicator = ({ activity }) => {
         return '📊';
       case 'generating':
         return '✨';
+      case 'success':
+        return '✅';
       case 'error':
         return '⚠️';
       default:

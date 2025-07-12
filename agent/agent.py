@@ -127,10 +127,18 @@ async def finalize_document(state: AgentState) -> AgentState:
         else:
             state["document_content"] = "# Document Generation Failed\n\nNo content was generated."
     
-    # Update document status
+    # Update document status AND content
     await supabase_manager.update_document_status(
         document_id=state["document_id"],
-        status="complete"
+        status="complete",
+        additional_fields={
+            "content": state.get("document_content", ""),
+            "metadata": {
+                "quality_score": state.get("overall_quality_score", 0),
+                "total_words": len(state.get("document_content", "").split()),
+                "generation_duration": sum(state.get("stage_timings", {}).values())
+            }
+        }
     )
     
     # Log workflow completion

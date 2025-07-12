@@ -7,6 +7,8 @@ import TemplateSelectionModal from '../components/TemplateSelectionModal'
 import DocumentCreationModal from '../components/DocumentCreationModal'
 import AccountDeletionModal from '../components/AccountDeletionModal'
 import { KnowledgeGraph } from '../components/KnowledgeGraph'
+import { GenerateDocumentModal } from '../components/GenerateDocumentModal'
+import { v4 as uuidv4 } from 'uuid'
 
 function ProspectDetailPage() {
   const { id } = useParams()
@@ -21,6 +23,8 @@ function ProspectDetailPage() {
   const [multipleFilesProgress, setMultipleFilesProgress] = useState([])
   const [showTemplateModal, setShowTemplateModal] = useState(false)
   const [showDocumentModal, setShowDocumentModal] = useState(false)
+  const [showGenerateModal, setShowGenerateModal] = useState(false)
+  const [generatingDocumentId, setGeneratingDocumentId] = useState(null)
   const [isEditingAccount, setIsEditingAccount] = useState(false)
   const [editedAccount, setEditedAccount] = useState({})
   const [isSavingAccount, setIsSavingAccount] = useState(false)
@@ -88,6 +92,75 @@ function ProspectDetailPage() {
 
   const handleGenerateDocument = async () => {
     setShowDocumentModal(true)
+  }
+
+  const handleAIGenerateDocument = async (prompt, docId = null, isComplete = false) => {
+    // If this is the completion callback
+    if (isComplete && docId) {
+      // Close modal
+      setShowGenerateModal(false);
+      setGeneratingDocumentId(null);
+      
+      // Navigate to the completed document
+      navigate(`/accounts/${account.id}/documents/${docId}`);
+      return;
+    }
+    
+    // Otherwise, this is the initial generation request
+    setGenerating(true);
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+      
+      // Create document in Supabase
+      const newDocumentId = uuidv4();
+      const { data: newDoc, error } = await supabase
+        .from('documents')
+        .insert({
+          id: newDocumentId,
+          title: `AI Generated Document - ${new Date().toLocaleDateString()}`,
+          account_id: account.id,
+          author_id: user.id,
+          generation_status: 'initializing',
+          document_type: 'ai_generated'
+        })
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      if (newDoc) {
+        // Store the document ID for the modal
+        setGeneratingDocumentId(newDoc.id);
+        
+        // Start the agent generation
+        const response = await fetch('/api/langgraph/start', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            documentId: newDoc.id,
+            accountData: account,
+            userId: user.id,
+            prompt: prompt
+          }),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to start generation: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+      }
+    } catch (error) {
+      console.error('Failed to create document:', error);
+      setGeneratingDocumentId(null);
+      throw error;
+    } finally {
+      setGenerating(false);
+    }
   }
 
   const handleCreateDocument = async (title) => {
@@ -827,15 +900,12 @@ function ProspectDetailPage() {
           <div className="px-8 py-6 border-b border-white/10 flex justify-between items-center">
             <h2 className="text-2xl font-light text-white">Documents</h2>
             <div className="flex items-center space-x-3">
-              {/* AI Generate Button - Placeholder for future */}
+              {/* AI Generate Button */}
               <button
-                onClick={() => {
-                  // Placeholder - will be implemented with LangGraph
-                  console.log('AI generation coming soon!')
-                }}
-                disabled={true}
-                className="btn-volcanic-primary inline-flex items-center space-x-2 text-sm opacity-50 cursor-not-allowed relative group"
-                title="Coming soon: AI-powered document generation"
+                onClick={() => setShowGenerateModal(true)}
+                disabled={generating}
+                className="btn-volcanic-primary inline-flex items-center space-x-2 text-sm"
+                title="Generate document with AI"
               >
                 {/* AI/Sparkles Icon */}
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -843,10 +913,6 @@ function ProspectDetailPage() {
                         d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                 </svg>
                 <span>Generate Document</span>
-                {/* Tooltip */}
-                <span className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                  Coming soon: AI-powered generation
-                </span>
               </button>
 
               {/* Create Empty Document Button */}
@@ -942,15 +1008,12 @@ function ProspectDetailPage() {
                 
                 {/* Document Creation Buttons */}
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                  {/* AI Generate Button - Placeholder for future */}
+                  {/* AI Generate Button */}
                   <button
-                    onClick={() => {
-                      // Placeholder - will be implemented with LangGraph
-                      console.log('AI generation coming soon!')
-                    }}
-                    disabled={true}
-                    className="btn-volcanic-primary inline-flex items-center space-x-2 opacity-50 cursor-not-allowed relative group"
-                    title="Coming soon: AI-powered document generation"
+                    onClick={() => setShowGenerateModal(true)}
+                    disabled={generating}
+                    className="btn-volcanic-primary inline-flex items-center space-x-2"
+                    title="Generate document with AI"
                   >
                     {/* AI/Sparkles Icon */}
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -958,10 +1021,6 @@ function ProspectDetailPage() {
                             d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                     </svg>
                     <span>Generate Document</span>
-                    {/* Tooltip */}
-                    <span className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                      Coming soon: AI-powered generation
-                    </span>
                   </button>
 
                   {/* Create Empty Document Button */}
@@ -1249,6 +1308,18 @@ function ProspectDetailPage() {
         onConfirm={handleDeleteAccount}
         accountName={account?.name || ''}
         isLoading={isDeletingAccount}
+      />
+
+      {/* Generate Document Modal */}
+      <GenerateDocumentModal
+        isOpen={showGenerateModal}
+        onClose={() => {
+          setShowGenerateModal(false);
+          setGeneratingDocumentId(null);
+        }}
+        onSubmit={handleAIGenerateDocument}
+        accountName={account?.name}
+        documentId={generatingDocumentId}
       />
     </div>
   )

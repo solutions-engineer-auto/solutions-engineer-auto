@@ -187,6 +187,7 @@ function DocumentEditorPage() {
     }
   }, [editor])
 
+
   // Fetch document and account data on mount
   useEffect(() => {
     const fetchData = async () => {
