@@ -1,0 +1,15 @@
+Using code-state-v3.md and voice-implementation-plan.md for guidance on what the code base is, create an implementation plan to implement the following feature. Do not write code. Write the plan to a markdown file with a descriptive filename under the _docs/dave folder.
+
+create a new button for AI chat that is a conversation type voice input for the AI chat. After the button is pressed a model should pop up showing what the user is asking the AI chat.  After some reasonable time out, the window should close and then the AI prompt should be populated with the query and start executing.
+
+
+
+Implement the plan found in ${file}.
+
+- as tasks are completed in the above file, please mark of the completed tasks with checkmark emoji in the file.
+
+- Refer to code-state-v3.md and voice-implementation-plan.md for guidance on navigating the code repository.
+
+- Stop at good points to easily manually test the implementation so far.  Please suggest manual tests to execute in order to verify that the implementation is bug free.
+
+- Use the supabase mcp for interacting with supabase instead of the command line tool.  We are using supabase in the cloud.  Be sure to write supabase migrations into the code repository whenever necessary (e.g. when adding columns to a table in supabase)

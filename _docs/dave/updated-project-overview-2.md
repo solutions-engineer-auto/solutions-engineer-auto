@@ -20,14 +20,7 @@ This section outlines the primary paths a user will take through the application
 * **Document Generation & AI Interaction (Core Flow):**  
   The frontend UI for AI interaction is fully built, featuring a resizable and context-aware chat panel. The current implementation uses a `useAIChat` hook to simulate a streaming AI response. The following scenarios describe the **target behavior** this UI is designed to support once connected to the LangGraph backend.
 
-  * **Scenario A: Generating from a Template (Primary Flow)**  
-    1.  A user action (e.g., selecting a "Statement of Work" template) creates a new document. The document's `document_type` is pre-set to 'SOW', and the editor is populated with the template's headers.
-    2.  The user provides a prompt: "Generate a Statement of Work for Project Phoenix."
-    3.  The LangGraph agent receives the prompt. Seeing the document is classified as an SOW, it understands its job is to **populate** the existing sections.
-    4.  The agent writes its thinking to the `chat_messages` table: "Okay, I will populate this Statement of Work for Project Phoenix..." This is pushed to the client in real-time via Supabase.
-    5.  The agent executes tool calls and writes the results to the `documents` table, filling in the template. The client's editor updates in real-time.
-
-  * **Scenario B: Generating from a Blank Document (Flexible Flow)**  
+  * **Generating from a Blank Document (Flexible Flow)**  
     1.  The user creates a blank document. The `document_type` is initially NULL.
     2.  The user provides a clear, generative prompt: "Generate a Statement of Work for Project Phoenix."
     3.  The LangGraph agent receives the prompt and understands it has two tasks:
