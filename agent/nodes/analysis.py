@@ -7,6 +7,7 @@ from state import AgentState
 from utils.prompts import AGENT_PERSONAS, get_reasoning_steps, get_context_adjustments, get_few_shot_examples
 from utils.supabase_client import supabase_manager
 from constants.events import EventTypes
+from constants.document_types import get_document_type_options, get_document_type_info
 import os
 import json
 
@@ -70,7 +71,22 @@ Context adjustments:
 
 Drawing on your experience as a former CTO, provide a comprehensive analysis:
 
-1. Document Type: What type of document will best serve this client's needs? (proposal, rfp_response, technical_architecture, poc_plan, business_case, or other)
+1. Document Type: What type of document will best serve this client's needs? Choose the MOST SPECIFIC type based on their actual request:
+
+Available Options: {get_document_type_options()}
+
+SELECTION GUIDELINES:
+- If they want a brief overview of your solution → "solutions_brief"
+- If they need a comprehensive proposal → "proposal"  
+- If they're responding to an RFP → "rfp_response"
+- If they need technical design/blueprint → "technical_architecture" or "reference_architecture"
+- If planning a proof of concept → "poc_plan"
+- If justifying an investment → "business_case" or "roi_calculator"
+- If need competitive analysis → "competitive_comparison"
+- If planning implementation → "implementation_plan"
+- If other specific need → choose the most appropriate type
+
+Choose based on what they're ACTUALLY asking for, not just the audience size.
 2. Target Audience: Who are ALL the stakeholders? (technical evaluators, business decision makers, procurement, legal, end users)
 3. Key Requirements: List 5-7 SPECIFIC requirements, including both stated and inferred needs
 4. Hidden Concerns: What unspoken worries might stakeholders have?

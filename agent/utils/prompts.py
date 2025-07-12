@@ -288,6 +288,150 @@ def get_validation_criteria(document_type: str) -> dict:
                 "Disaster recovery and business continuity",
                 "Clear diagrams and visualizations"
             ]
+        },
+        "solutions_brief": {
+            "required_elements": [
+                "Executive summary of client challenges",
+                "Clear solution overview with key capabilities",
+                "Specific benefits addressing client pain points",
+                "High-level implementation approach",
+                "Compelling call to action for next steps"
+            ],
+            "quality_checks": [
+                "Concise and focused (2-4 pages maximum)",
+                "Client-specific challenges clearly articulated",
+                "Solution benefits directly tied to business outcomes",
+                "Professional visual presentation",
+                "Clear and compelling value proposition"
+            ]
+        },
+        "poc_plan": {
+            "required_elements": [
+                "Clear POC objectives and success criteria",
+                "Specific scope with included/excluded features",
+                "Realistic timeline with key milestones",
+                "Resource requirements and responsibilities",
+                "Evaluation criteria and decision framework"
+            ],
+            "quality_checks": [
+                "Achievable scope for the timeline",
+                "Clear success metrics defined upfront",
+                "Risk mitigation for common POC challenges",
+                "Transition plan from POC to production",
+                "Stakeholder alignment on expectations"
+            ]
+        },
+        "business_case": {
+            "required_elements": [
+                "Problem statement with quantified impact",
+                "Solution options with detailed comparison",
+                "Financial analysis with ROI calculations",
+                "Risk assessment and mitigation strategies",
+                "Implementation roadmap with clear milestones"
+            ],
+            "quality_checks": [
+                "Compelling executive summary for decision makers",
+                "Quantified business benefits with credible sources",
+                "Realistic cost estimates including hidden costs",
+                "Strategic alignment with business objectives",
+                "Clear recommendation with supporting rationale"
+            ]
+        },
+        "discovery_questionnaire": {
+            "required_elements": [
+                "Business objectives and success criteria questions",
+                "Current state assessment questions",
+                "Technical environment and constraints questions",
+                "Stakeholder and decision process questions",
+                "Timeline and budget parameters questions"
+            ],
+            "quality_checks": [
+                "Open-ended questions that encourage detailed responses",
+                "Logical flow from high-level to specific details",
+                "Questions that uncover hidden requirements",
+                "Appropriate length for stakeholder time investment",
+                "Clear instructions for completion and follow-up"
+            ]
+        },
+        "competitive_comparison": {
+            "required_elements": [
+                "Objective comparison matrix of key capabilities",
+                "Specific differentiators and unique value propositions",
+                "Honest assessment of competitor strengths",
+                "Clear recommendation based on client requirements",
+                "Supporting evidence and proof points"
+            ],
+            "quality_checks": [
+                "Fair and balanced presentation builds credibility",
+                "Client-specific criteria drive the comparison",
+                "Differentiators are meaningful and verifiable",
+                "Professional tone without disparaging competitors",
+                "Clear decision framework for selection"
+            ]
+        },
+        "implementation_plan": {
+            "required_elements": [
+                "Detailed project phases with clear deliverables",
+                "Resource requirements and team structure",
+                "Risk identification and mitigation strategies",
+                "Timeline with dependencies and critical path",
+                "Communication and governance framework"
+            ],
+            "quality_checks": [
+                "Realistic timeline with appropriate contingencies",
+                "Clear roles and responsibilities defined",
+                "Risk mitigation plans are actionable",
+                "Success criteria for each phase defined",
+                "Change management considerations included"
+            ]
+        },
+        "roi_calculator": {
+            "required_elements": [
+                "Current state cost analysis",
+                "Future state benefit projections",
+                "Implementation and ongoing costs",
+                "Break-even analysis and payback period",
+                "Sensitivity analysis for key assumptions"
+            ],
+            "quality_checks": [
+                "Conservative assumptions build credibility",
+                "All cost categories comprehensively covered",
+                "Benefits are quantifiable and realistic",
+                "Clear methodology for calculations",
+                "Professional financial presentation"
+            ]
+        },
+        "security_questionnaire_response": {
+            "required_elements": [
+                "Comprehensive security framework overview",
+                "Specific compliance certifications and audits",
+                "Data protection and privacy measures",
+                "Incident response and recovery procedures",
+                "Third-party security assessments"
+            ],
+            "quality_checks": [
+                "Complete responses to all security questions",
+                "Evidence provided for security claims",
+                "Clear explanation of security architecture",
+                "Compliance with relevant industry standards",
+                "Regular security update and patch procedures"
+            ]
+        },
+        "training_materials": {
+            "required_elements": [
+                "Learning objectives and target outcomes",
+                "Step-by-step procedures with screenshots",
+                "Common scenarios and use cases",
+                "Troubleshooting and FAQ sections",
+                "Assessment criteria and validation methods"
+            ],
+            "quality_checks": [
+                "Clear and accessible language for target audience",
+                "Logical progression from basic to advanced topics",
+                "Visual aids enhance understanding",
+                "Hands-on exercises reinforce learning",
+                "Easy to update and maintain content"
+            ]
         }
     }
     

@@ -7,6 +7,7 @@ from state import AgentState
 from utils.prompts import AGENT_PERSONAS, get_reasoning_steps, get_context_adjustments
 from utils.supabase_client import supabase_manager
 from constants.events import EventTypes
+from constants.document_types import get_document_type_info
 import os
 import json
 
@@ -35,6 +36,7 @@ async def plan_document(state: AgentState) -> AgentState:
     
     # Get document type from analysis
     doc_type = state.get("document_outline", {}).get("document_type", "custom")
+    doc_type_info = get_document_type_info(doc_type)
     
     persona = AGENT_PERSONAS["solutions_architect"]
     
@@ -50,7 +52,12 @@ Do not use any predefined templates - let the user's needs drive the structure.
 
 User's Request: {state['task']}
 
-Document Type Identified: {doc_type}
+Document Type Identified: {doc_type} ({doc_type_info['name']})
+Document Type Description: {doc_type_info['description']}
+Typical Audience: {doc_type_info.get('typical_audience', [])}
+Typical Sections: {doc_type_info.get('typical_sections', [])}
+Target Length: {doc_type_info.get('length', 'Variable')}
+
 Target Audience: {state.get('target_audience', 'To be determined from the request')}
 
 Key Requirements to Address:

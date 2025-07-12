@@ -240,7 +240,7 @@ async def retrieve_and_score_documents(state: AgentState) -> AgentState:
                 "duration_seconds": (datetime.now() - start_time).total_seconds()
             },
             thread_id=state["thread_id"],
-            run_id=state["run_id")
+            run_id=state["run_id"]
         )
     # Update workflow state
     state["current_stage"] = "retrieval"

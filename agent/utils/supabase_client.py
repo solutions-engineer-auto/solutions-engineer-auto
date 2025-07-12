@@ -170,6 +170,24 @@ class SupabaseManager:
             print(f"[SupabaseManager] Failed to log message: {e}")
             return False
     
+    async def get_document_content(
+        self,
+        document_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """Fetch document content and metadata"""
+        try:
+            result = self.client.table("documents")\
+                .select("content, metadata, title, status")\
+                .eq("id", document_id)\
+                .execute()
+            
+            if result.data and len(result.data) > 0:
+                return result.data[0]
+            return None
+        except Exception as e:
+            print(f"[SupabaseManager] Failed to fetch document content: {e}")
+            return None
+    
     async def fetch_account_by_id(
         self,
         account_id: str
