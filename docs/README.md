@@ -1,27 +1,25 @@
-# Solutions Engineer Automation Tool
+# Maxwell - AI Writing Assistant for Solutions Engineers
 
-An AI-powered document generation platform that helps Solutions Engineers create integration proposals and technical documentation 90% faster.
+An intelligent writing assistant that helps Solutions Engineers create integration proposals, technical documentation, and sales materials 90% faster.
 
 ## Overview
 
-This MVP demonstrates how AI agents can streamline the document creation process for Solutions Engineers while maintaining quality through human review and editing capabilities. The application features a React frontend with a LangGraph Cloud AI agent backend.
+Maxwell is an AI writing assistant designed specifically for Solutions Engineers. It understands the technical and business context of enterprise software sales, helping you write compelling proposals, detailed technical documentation, and persuasive sales materials. Maxwell features a React frontend with a LangGraph Cloud AI agent backend that acts as your writing partner throughout the sales cycle.
 
 ### Key Features
 
-- **AI-Powered Document Generation** - Generate complete integration documents using AI agents with 20+ document types
-- **AI Chat Assistant** - Interactive chat panel with automatic document replacement
-- **Rich Text Editor** - Full-featured document editing with TipTap, including Mermaid diagram support
-- **Multi-Format Export** - Export documents as Word (DOCX), PDF, or Markdown
-- **Account Management** - Track prospects and their document status
-- **Document Storage** - Persist documents with Supabase backend
-- **Real-time Activity Tracking** - See what the AI agent is doing in real-time
-- **Voice Input** - Voice-to-text for AI chat using Web Speech API (Ctrl+.)
-- **AI-Powered Text Editing** - Select text and press Cmd/Ctrl+K for AI suggestions
-- **Knowledge Graph Visualization** - Interactive graph showing document relationships
-- **Prompt Optimization Lab** - DSPy-style prompt optimization for document generation workflow
-- **Advanced Diff System** - Track and review AI-suggested changes with accept/reject functionality
-- **Document Templates** - Pre-built templates for common document types
-- **Global Knowledge Base** - Share documents across accounts for reusability
+- **AI Writing Partner** - Get intelligent help writing 20+ types of technical and sales documents
+- **Context-Aware Assistant** - Maxwell understands your prospect's industry, stage, and technical requirements
+- **Smart Text Refinement** - Select any text and press Cmd/Ctrl+K for instant AI-powered improvements
+- **Voice Dictation** - Speak your ideas and let Maxwell help you structure them (Ctrl+.)
+- **Rich Text Editor** - Professional document editing with diagrams, formatting, and real-time collaboration
+- **Intelligent Suggestions** - Get writing suggestions that match your tone and technical accuracy
+- **Knowledge Memory** - Maxwell remembers your previous documents to maintain consistency
+- **Multi-Format Export** - Deliver polished documents as Word (DOCX), PDF, or Markdown
+- **Prompt Optimization Lab** - Fine-tune Maxwell's writing style for your specific needs
+- **Change Tracking** - Review all AI suggestions before accepting them into your document
+- **Template Library** - Start from proven templates for common SE scenarios
+- **Global Knowledge Base** - Leverage successful content from across your organization
 
 ## Prerequisites
 
@@ -158,21 +156,21 @@ All environment variables are configured in a single `.env` file in the root dir
 
 ## Features
 
-### AI Chat Assistant
+### AI Writing Assistant
 
-The application includes an AI chat panel that provides:
+Maxwell works alongside you as an intelligent writing partner:
 
-- **Interactive Document Generation** - Ask the AI to create specific types of documents
-- **Automatic Document Replacement** - Generated documents automatically replace the editor content
-- **Mock Mode** - Test the UI with simulated responses
-- **Agent Mode** - Connect to your LangGraph deployment for real AI generation
-- **Voice Input** - Press Ctrl+. to use voice-to-text input
+- **Natural Language Requests** - Ask Maxwell to write any type of document in plain English
+- **Context Understanding** - Maxwell knows your prospect's details and writes accordingly
+- **Instant Draft Creation** - Get a complete first draft in seconds, then refine together
+- **Voice-First Input** - Speak your ideas naturally with Ctrl+. for voice dictation
+- **Collaborative Refinement** - Chat with Maxwell to improve specific sections
 
-To use the AI chat:
+To work with Maxwell:
 1. Click the "AI Assistant" button in the document editor
-2. Type your request (e.g., "Generate a blue discovery document") or use voice input
-3. The AI will generate the document and automatically load it in the editor
-4. The chat shows a clean "Document Generated" message instead of the full content
+2. Describe what you need to write (e.g., "Write a technical proposal for Blue Corp's API integration")
+3. Maxwell creates a complete draft based on your requirements
+4. Continue chatting to refine sections or make specific changes
 
 ### Knowledge Graph
 
@@ -195,14 +193,14 @@ Optimize the prompts used in document generation:
 
 Access from the Account Dashboard via the "Optimization Lab" button.
 
-### AI-Powered Text Editing
+### Smart Text Refinement
 
-Enhance your writing with AI suggestions:
+Improve any part of your document with intelligent suggestions:
 
-- **Quick Edit** - Select text and press Cmd/Ctrl+K
-- **AI Suggestions** - Get rewrite suggestions instantly
-- **Diff Preview** - Review changes before applying
-- **Accept/Reject** - Full control over AI edits
+- **Instant Rewrites** - Select text and press Cmd/Ctrl+K for better alternatives
+- **Context-Aware Edits** - Maxwell understands the surrounding content for coherent suggestions
+- **Style Matching** - Maintains your document's tone and technical level
+- **Full Control** - Preview and choose which suggestions to accept
 
 ### Voice Input
 
