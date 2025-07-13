@@ -734,22 +734,33 @@ function ProspectDetailPage() {
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Header
-          actions={ <></> }
+          actions={
+            <>
+              <button
+                onClick={() => navigate('/accounts')}
+                className="btn-volcanic flex items-center space-x-2 group"
+              >
+                <svg className="w-5 h-5 group-hover:text-cyan-500 transition-colors rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span>Back to Dashboard</span>
+              </button>
+            </>
+          }
         >
-          <button
-            onClick={() => navigate('/accounts')}
-            className="flex items-center text-white/70 hover:text-white transition-colors group"
-          >
-            <svg className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                    d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            <span className="font-light">Back to accounts</span>
-          </button>
+          <div>
+            <h1 className="text-3xl font-light text-white tracking-wide">
+              Account Details
+            </h1>
+            <p className="text-sm text-white/60 font-light">
+              Manage documents and data sources for {account?.name || 'this account'}
+            </p>
+          </div>
         </Header>
 
         {/* Account Summary Card */}
-        <div className="glass-panel mb-8 p-8 relative overflow-hidden">
+        <div className="glass-panel mb-8 mt-8 p-8 relative overflow-hidden">
           {/* Subtle gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent"></div>
           
@@ -757,9 +768,9 @@ function ProspectDetailPage() {
             <div className="flex justify-between items-start">
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-3">
-                  <h1 className="text-3xl font-light text-white">
-                    {account.name}
-                  </h1>
+                  <h2 className="text-2xl font-light text-white">
+                    Account Information
+                  </h2>
                   {!isEditingAccount && (
                     <div className="flex items-center space-x-3">
                       <button

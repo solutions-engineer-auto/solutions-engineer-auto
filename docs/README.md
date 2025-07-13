@@ -8,13 +8,20 @@ This MVP demonstrates how AI agents can streamline the document creation process
 
 ### Key Features
 
-- **AI-Powered Document Generation** - Generate complete integration documents using AI agents
+- **AI-Powered Document Generation** - Generate complete integration documents using AI agents with 20+ document types
 - **AI Chat Assistant** - Interactive chat panel with automatic document replacement
-- **Rich Text Editor** - Full-featured document editing with TipTap
+- **Rich Text Editor** - Full-featured document editing with TipTap, including Mermaid diagram support
 - **Multi-Format Export** - Export documents as Word (DOCX), PDF, or Markdown
 - **Account Management** - Track prospects and their document status
 - **Document Storage** - Persist documents with Supabase backend
 - **Real-time Activity Tracking** - See what the AI agent is doing in real-time
+- **Voice Input** - Voice-to-text for AI chat using Web Speech API (Ctrl+.)
+- **AI-Powered Text Editing** - Select text and press Cmd/Ctrl+K for AI suggestions
+- **Knowledge Graph Visualization** - Interactive graph showing document relationships
+- **Prompt Optimization Lab** - DSPy-style prompt optimization for document generation workflow
+- **Advanced Diff System** - Track and review AI-suggested changes with accept/reject functionality
+- **Document Templates** - Pre-built templates for common document types
+- **Global Knowledge Base** - Share documents across accounts for reusability
 
 ## Prerequisites
 
@@ -43,7 +50,7 @@ This MVP demonstrates how AI agents can streamline the document creation process
    ```bash
    cp .env.example .env
    ```
-   
+
    Edit `.env` and add your credentials. See the [Environment Variables](#environment-variables) section for details.
 
 4. **Start the development server**
@@ -52,12 +59,12 @@ This MVP demonstrates how AI agents can streamline the document creation process
    ```
 
 5. **Open the application**
-   
+
    Navigate to http://localhost:5173 in your browser
 
 ## LangGraph Agent Setup
 
-### Option 1: Local Development (Recommended for testing)
+### Option 1: Local Development
 
 You can run the LangGraph agent locally for development and testing:
 
@@ -71,12 +78,12 @@ You can run the LangGraph agent locally for development and testing:
    ```
 
 2. **Start the local agent server**
-   
+
    On macOS/Linux:
    ```bash
    ./run_agent_server.sh
    ```
-   
+
    On Windows:
    ```cmd
    run_agent_server.bat
@@ -101,7 +108,7 @@ For production use, deploy the agent to LangGraph Cloud:
 
 1. **Deploy to LangGraph Cloud**
    Follow the [LangGraph Cloud deployment guide](https://docs.langchain.com/docs/cloud/deployment) to deploy the agent.
-   
+
    The agent file to deploy is `agent/agent.py`
 
 2. **Update frontend configuration**
@@ -123,28 +130,6 @@ For production use, deploy the agent to LangGraph Cloud:
 
 3. **Update environment variables**
    Add your Supabase credentials to `.env`
-
-
-
-## Mock Data Generator
-
-### Setup
-
-```bash
-python -m ".venv"
-source .venv/bin/activate  # use activate.fish for fish shell
-pip install -r requirements.txt
-```
-
-### Generate
-
-```bash
-python mock/sales_docs/generate_sales_docs.py
-```
-
-Files will appear in a timestamped folder within the `mock/sales_docs/generated_documents` folder
-
-
 
 
 ## Environment Variables
@@ -173,18 +158,6 @@ All environment variables are configured in a single `.env` file in the root dir
 
 ## Features
 
-### Document Generation Modes
-
-1. **Mock Mode** (Default)
-   - Uses pre-configured mock data
-   - No external dependencies required
-   - Great for UI development and testing
-
-2. **Agent Mode** 
-   - Connects to your LangGraph Cloud deployment
-   - Real AI-powered document generation
-   - Requires LangGraph API credentials
-
 ### AI Chat Assistant
 
 The application includes an AI chat panel that provides:
@@ -193,46 +166,100 @@ The application includes an AI chat panel that provides:
 - **Automatic Document Replacement** - Generated documents automatically replace the editor content
 - **Mock Mode** - Test the UI with simulated responses
 - **Agent Mode** - Connect to your LangGraph deployment for real AI generation
+- **Voice Input** - Press Ctrl+. to use voice-to-text input
 
 To use the AI chat:
 1. Click the "AI Assistant" button in the document editor
-2. Type your request (e.g., "Generate a blue discovery document")
+2. Type your request (e.g., "Generate a blue discovery document") or use voice input
 3. The AI will generate the document and automatically load it in the editor
 4. The chat shows a clean "Document Generated" message instead of the full content
+
+### Knowledge Graph
+
+Visualize document relationships and connections:
+
+- **Interactive Graph** - Click and drag nodes to explore relationships
+- **Document Preview** - Click nodes to see document details
+- **Global Knowledge View** - Toggle between account-specific and global knowledge
+- **Real-time Updates** - Graph updates automatically as documents are added
+
+### Prompt Optimization Lab
+
+Optimize the prompts used in document generation:
+
+- **Visual Workflow** - See all 6 document generation steps
+- **Prompt Editing** - Edit prompts with variable highlighting
+- **Test with Sample Data** - Test prompts before applying
+- **Automatic Optimization** - Generate optimized prompt variants
+- **Quality Scoring** - Compare variants with quality metrics
+
+Access from the Account Dashboard via the "Optimization Lab" button.
+
+### AI-Powered Text Editing
+
+Enhance your writing with AI suggestions:
+
+- **Quick Edit** - Select text and press Cmd/Ctrl+K
+- **AI Suggestions** - Get rewrite suggestions instantly
+- **Diff Preview** - Review changes before applying
+- **Accept/Reject** - Full control over AI edits
+
+### Voice Input
+
+Use voice commands for faster input:
+
+- **Global Shortcut** - Press Ctrl+. anywhere in the app
+- **Auto-transcription** - Real-time speech-to-text
+- **AI Chat Integration** - Voice input directly to AI assistant
+
+### Document Types
+
+The AI agent can generate 20+ different document types:
+
+- **Sales Documents** - Proposals, SOWs, Business Cases
+- **Technical Documents** - Architecture docs, Security questionnaires, API docs
+- **Discovery Documents** - Requirements gathering, Technical assessments
+- **Implementation Documents** - Project plans, Training materials, Runbooks
+- **Support Documents** - Troubleshooting guides, FAQs, Knowledge base articles
 
 ### Workflow
 
 1. **Login** - Use any email/password (mock authentication)
 2. **Select Account** - Choose from the list of prospects
 3. **Generate Document** - Use AI chat or click "Generate with AI"
-4. **Edit & Refine** - Use the rich text editor
-5. **Export** - Download in your preferred format
+4. **Edit & Refine** - Use the rich text editor with AI assistance
+5. **Collaborate** - Share via global knowledge base
+6. **Export** - Download in your preferred format (DOCX, PDF, Markdown)
 
-### Tech Stack
 
-- **Frontend**: React 19, Vite, TailwindCSS
-- **Editor**: TipTap (rich text editor)
-- **State**: Zustand
-- **Routing**: React Router v7
-- **Database**: Supabase (PostgreSQL)
-- **Export**: docx, html2pdf.js, turndown
-- **Mocking**: MSW (Mock Service Worker)
-- **AI Integration**: LangGraph SDK
-- **Agent**: Python, LangGraph, LangChain, OpenAI
+## Contributors
 
-## Development
-
-### Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run lint` - Run ESLint
+- **[@bishibop](https://github.com/bishibop)** - LangGraph agent implementation and Prompt Optimization Lab
+- **[@britishamerican](https://github.com/britishamerican)** - Editor UI, diff system, and Knowledge Graph visualization  
+- **[@matt0089](https://github.com/matt0089)** - Backend infrastructure, voice features, and document processing
 
 ## License
 
-This is a technical demonstration project.
+MIT License
+
+Copyright (c) 2025 Solutions Engineer Auto Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 ---
-
-Built for Solutions Engineers

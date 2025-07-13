@@ -186,6 +186,14 @@ function AccountDashboard() {
           actions={
             <>
               <button
+                onClick={() => navigate('/prompt-optimization')}
+                className="px-4 py-2 text-sm bg-white/[0.08] backdrop-blur-sm border border-white/20 rounded-lg text-white/90 hover:bg-white/[0.12] hover:border-cyan-500/50 transition-all duration-300 flex items-center gap-2"
+                title="Optimize document generation prompts"
+              >
+                <span>🔬</span>
+                <span>Optimization Lab</span>
+              </button>
+              <button
                 onClick={() => setShowAccountModal(true)}
                 className="btn-volcanic-primary"
               >
