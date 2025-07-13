@@ -4,9 +4,10 @@ import AIMessage from './AIMessage';
 import AIActivityIndicator from './AIActivityIndicator';
 import AIChatInput from './AIChatInput';
 import ConnectionStatus from './ConnectionStatus';
-import VoiceInputModal from './VoiceInputModal';
+// VoiceInputModal is no longer imported or rendered here
+import { useKeyboard } from '../../utils/useKeyboard';
 
-const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, documentId, agentThreadId, onThreadCreate, onDocumentGenerated }) => {
+const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, documentId, agentThreadId, onThreadCreate, onDocumentGenerated, onMicrophoneClick }) => {
   const messagesEndRef = useRef(null);
   const panelRef = useRef(null);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -14,7 +15,7 @@ const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, documentId
   const resizeHandleRef = useRef(null);
   const [isClosing, setIsClosing] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
-  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+  // isVoiceModalOpen state is removed
 
   // Call the hook with the proper parameters
   const {
@@ -31,6 +32,18 @@ const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, documentId
     onDocumentUpdate: onDocumentGenerated
   });
   
+  // Listen for messages from the voice modal
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (event.data.type === 'SEND_AI_CHAT_MESSAGE' && event.data.message) {
+        sendMessage(event.data.message);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [sendMessage]);
+
+
   // Check for speech recognition support
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   useEffect(() => {
@@ -120,12 +133,7 @@ const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, documentId
 
   if (!isVisible) return null;
 
-  const handleVoiceSubmit = (transcript) => {
-    if (transcript.trim()) {
-      sendMessage(transcript);
-    }
-    setIsVoiceModalOpen(false);
-  };
+  // handleVoiceSubmit function is removed
 
   return (
     <>
@@ -230,16 +238,12 @@ const AIChatPanel = ({ isOpen, onClose, documentContent, accountData, documentId
               onSendMessage={handleSendMessage}
               isDisabled={isStreaming}
               isSpeechSupported={isSpeechSupported}
-              onMicrophoneClick={() => setIsVoiceModalOpen(true)}
+              onMicrophoneClick={onMicrophoneClick} // Use the prop from DocumentEditorPage
             />
           </>
         )}
       </div>
-      <VoiceInputModal
-        isOpen={isVoiceModalOpen}
-        onClose={() => setIsVoiceModalOpen(false)}
-        onSubmit={handleVoiceSubmit}
-      />
+      {/* VoiceInputModal is no longer rendered here */}
     </>
   );
 };

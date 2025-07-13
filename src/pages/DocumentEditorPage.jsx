@@ -13,11 +13,13 @@ import AIChatPanel from '../components/AIChat/AIChatPanel'
 import ExportModal from '../components/ExportModal'
 import AIEditModal from '../components/AIEditModal'
 import MermaidInsertModal from '../components/MermaidInsertModal'
+import VoiceInputModal from '../components/AIChat/VoiceInputModal' // Import VoiceInputModal
 import { supabase } from '../supabaseClient'
 import AgentActivity from '../components/AgentActivity'
 import { convertMarkdownToHtml } from '../utils/markdownToHtml'
 import { DiffExtension } from '../extensions/DiffExtension'
 import { MermaidExtension } from '../extensions/MermaidExtension'
+import { useKeyboard } from '../utils/useKeyboard' // Import useKeyboard
 import { DIFF_ENABLED } from '../utils/featureFlags'
 import { getDirectAISuggestions } from '../services/directAIEditService'
 import { processAIEdits } from '../utils/editProcessor'
@@ -36,6 +38,7 @@ function DocumentEditorPage() {
   const [showAIEditModal, setShowAIEditModal] = useState(false)
   const [selectedTextForEdit, setSelectedTextForEdit] = useState('')
   const [showMermaidModal, setShowMermaidModal] = useState(false)
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false) // Add state for voice modal
   
   // Agent integration states
   const [agentThreadId, setAgentThreadId] = useState(null)
@@ -45,6 +48,20 @@ function DocumentEditorPage() {
   // These are commented out for future use when the UI is connected
   // const [showDiffUI, setShowDiffUI] = useState(false)
   // const [pendingChanges, setPendingChanges] = useState(0)
+
+  const handleOpenVoiceModal = () => {
+    if (!showAIChat) {
+      setShowAIChat(true);
+    }
+    setIsVoiceModalOpen(true);
+  };
+
+  // Setup keyboard shortcut here, before useEditor
+  useKeyboard({
+    key: '.',
+    ctrl: true,
+    callback: handleOpenVoiceModal
+  });
 
   // Handle AI edit request from DiffExtension
   const handleAIEditRequest = useCallback(({ selection }) => {
@@ -992,6 +1009,22 @@ function DocumentEditorPage() {
         agentThreadId={agentThreadId}
         onThreadCreate={setAgentThreadId}
         onDocumentGenerated={handleDocumentReplacement}
+        onMicrophoneClick={handleOpenVoiceModal} // Pass the handler
+      />
+
+      <VoiceInputModal
+        isOpen={isVoiceModalOpen}
+        onClose={() => setIsVoiceModalOpen(false)}
+        onSubmit={(transcript) => {
+          // This assumes sendMessage is available here, which it isn't.
+          // We'll need to lift the chat logic or use a different approach.
+          // For now, let's just log it.
+          console.log('Voice transcript submitted:', transcript);
+          // A better approach would be to have a global event bus or context.
+          // Let's create a temporary solution.
+          window.postMessage({ type: 'SEND_AI_CHAT_MESSAGE', message: transcript }, '*');
+          setIsVoiceModalOpen(false);
+        }}
       />
       
       {/* Agent Activity Indicator */}
