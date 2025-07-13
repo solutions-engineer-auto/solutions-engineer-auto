@@ -4,6 +4,7 @@ import AccountCard from '../components/AccountCard';
 import AccountCreationModal from '../components/AccountCreationModal';
 import { supabase } from '../supabaseClient';
 import { KnowledgeGraph } from '../components/KnowledgeGraph';
+import Header from '../components/Header';
 
 function AccountDashboard() {
   const navigate = useNavigate();
@@ -181,17 +182,9 @@ function AccountDashboard() {
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="glass-panel mb-8 p-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-light text-white tracking-wide mb-1">
-                Account Dashboard
-              </h1>
-              <p className="text-sm text-white/60 font-light">
-                Welcome back, <span className="text-cyan-500">{user?.email}</span>
-              </p>
-            </div>
-            <div className="flex items-center space-x-4">
+        <Header
+          actions={
+            <>
               <button
                 onClick={() => setShowAccountModal(true)}
                 className="btn-volcanic-primary"
@@ -208,9 +201,18 @@ function AccountDashboard() {
                 </svg>
                 <span>Logout</span>
               </button>
-            </div>
+            </>
+          }
+        >
+          <div>
+            <h1 className="text-3xl font-light text-white tracking-wide">
+              Account Dashboard
+            </h1>
+            <p className="text-sm text-white/60 font-light">
+              Welcome back, <span className="text-cyan-500">{user?.email}</span>
+            </p>
           </div>
-        </div>
+        </Header>
 
         {/* Filter Section */}
         <div className="glass-panel mb-8 p-6">

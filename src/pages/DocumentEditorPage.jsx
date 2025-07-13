@@ -23,6 +23,7 @@ import { useKeyboard } from '../utils/useKeyboard' // Import useKeyboard
 import { DIFF_ENABLED } from '../utils/featureFlags'
 import { getDirectAISuggestions } from '../services/directAIEditService'
 import { processAIEdits } from '../utils/editProcessor'
+import Header from '../components/Header'
 
 function DocumentEditorPage() {
   const { accountId, docId } = useParams()
@@ -623,55 +624,52 @@ function DocumentEditorPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0A0F1E] via-[#0A0F1E] to-[#05070C]">
-      {/* Header */}
-      <div className="glass-panel sticky top-0 z-50 border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => {
-                  if (!accountId) {
-                    console.error('AccountId is undefined, navigating to accounts list')
-                    navigate('/accounts')
-                  } else {
-                    navigate(`/accounts/${accountId}`)
-                  }
-                }}
-                className="text-white/70 hover:text-white transition-colors relative z-30 px-3 py-2 rounded-lg hover:bg-white/10"
-              >
-                ← Back to Account
-              </button>
-              
-              <div className="h-6 w-px bg-white/20"></div>
-              <h1 className="text-xl font-light text-white">Document Editor</h1>
+      <Header
+        actions={
+          <>
+            {/* AI Chat Button */}
+            <button
+              onClick={() => setShowAIChat(!showAIChat)}
+              className="px-4 py-2 text-sm bg-white/[0.08] backdrop-blur-sm border border-white/20 rounded-lg text-white/90 hover:bg-white/[0.12] hover:border-cyan-500/50 transition-all duration-300 flex items-center gap-2"
+              title={showAIChat ? 'Close AI Assistant' : 'Open AI Assistant'}
+            >
+              <span>🤖</span>
+              <span>AI Assistant</span>
+            </button>
+            
+            {/* Status Badge */}
+            <div className={`px-3 py-1 rounded-full text-sm font-medium ${currentStatusInfo.color}`}>
+              {currentStatusInfo.label}
             </div>
             
-            <div className="flex items-center space-x-4">
-              {/* AI Chat Button */}
-              <button
-                onClick={() => setShowAIChat(!showAIChat)}
-                className="px-4 py-2 text-sm bg-white/[0.08] backdrop-blur-sm border border-white/20 rounded-lg text-white/90 hover:bg-white/[0.12] hover:border-cyan-500/50 transition-all duration-300 flex items-center gap-2"
-                title={showAIChat ? 'Close AI Assistant' : 'Open AI Assistant'}
-              >
-                <span>🤖</span>
-                <span>AI Assistant</span>
-              </button>
-              
-              {/* Status Badge */}
-              <div className={`px-3 py-1 rounded-full text-sm font-medium ${currentStatusInfo.color}`}>
-                {currentStatusInfo.label}
+            {/* Save Status */}
+            {!isFinalized && (
+              <div className="text-sm text-white/50">
+                {saving ? 'Saving...' : isDirty ? 'Unsaved changes' : 'All changes saved'}
               </div>
-              
-              {/* Save Status */}
-              {!isFinalized && (
-                <div className="text-sm text-white/50">
-                  {saving ? 'Saving...' : isDirty ? 'Unsaved changes' : 'All changes saved'}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+            )}
+          </>
+        }
+      >
+        <button
+          onClick={() => {
+            if (!accountId) {
+              console.error('AccountId is undefined, navigating to accounts list')
+              navigate('/accounts')
+            } else {
+              navigate(`/accounts/${accountId}`)
+            }
+          }}
+          className="text-white/70 hover:text-white transition-colors relative z-30 px-3 py-2 rounded-lg hover:bg-white/10 flex items-center"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+          </svg>
+          Back to Account
+        </button>
+        <div className="h-6 w-px bg-white/20"></div>
+        <h1 className="text-xl font-light text-white">Document Editor</h1>
+      </Header>
 
       {/* Formatting Toolbar */}
       {editor && !isFinalized && (
