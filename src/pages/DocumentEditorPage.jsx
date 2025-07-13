@@ -294,13 +294,25 @@ function DocumentEditorPage() {
 
   // Update editor content when initialContent changes
   useEffect(() => {
-    if (editor && initialContent && documentData) {
-        if(editor.getHTML() !== initialContent) {
-            editor.commands.setContent(initialContent)
-        }
-        setIsDirty(false)
+    if (!editor || !initialContent) {
+      return;
     }
-  }, [initialContent, documentData, editor])
+
+    // Prevents doing a `setContent` on every render.
+    if (editor.getHTML() === initialContent) {
+      return;
+    }
+    
+    // Use a microtask to avoid calling setContent during a render cycle.
+    queueMicrotask(() => {
+      if (editor) {
+        editor.commands.setContent(initialContent);
+        // Reset the dirty state after content is set.
+        setIsDirty(false);
+      }
+    });
+
+  }, [initialContent, editor]);
 
   // Define handleSave before using it in useEffect
   const handleSave = useCallback(async () => {
