@@ -21,8 +21,8 @@ const Header = ({ children, actions }) => {
 
       {/* Centered Logo */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-        <Link to="/accounts">
-          <img src={maxwellLogo} alt="Maxwell Logo" className="h-12 w-12" />
+        <Link to="/accounts" className="logo-container">
+          <img src={maxwellLogo} alt="Maxwell Logo" className="h-16 w-16" />
         </Link>
       </div>
 
